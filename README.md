@@ -4,13 +4,15 @@
   <br>
  <img src="./src/easy_mqtt_handler/assets/app-icon/app-icon-256.png" alt="Easy MQTT Handler">
   <br>
-Easy MQTT Handler
+Easy MQTT Handler 2
   <br>
 </h1>
 <h4 align="center">
-Easy MQTT Handler is a MQTT Client implemented in Python3 that will connect to a MQTT Broker, <br/>
-listening for freely configurable messages and reacting by executing arbitrary pre-defined commands. <br/>
-It comes with a Qt5-based GUI (License: GPLv3+). 
+Easy MQTT Handler 2 is a desktop MQTT Client.<br/>
+Implemented in Python 3, it connects to an MQTT broker, listens for freely configurable messages, and reacts by executing arbitrary predefined commands.<br/>
+It comes with a Qt5-based GUI.<br/>
+License: GPLv3+.<br/>
+This repository is a fork and continuation of the awesome [Easy MQTT Handler](https://github.com/andzeil/easy-mqtt-handler) developed by [A. Zeil](https://github.com/andzeil).<br/>
 </h4>
 
 # Table of contents
@@ -233,20 +235,3 @@ If everything goes as expected you should now see the following Balloon notifica
 If for some reason it didn't work, make sure to check the [Logs tab](#logs-tab). If the logs show that the payload was 
 received and successfully parsed but nothing happens: just try something other than `notify-send`. 
 Sky's the limit here. Make this tool yours!
-
-# Roadmap
-
-There's no concrete roadmap in place at the moment, but that doesn't mean there's nothing to do. If you want to chime 
-in and contribute, or you just want to see all the known issues, head over to [TODOS.md](./docs/TODOS.md). 
-
-# Support
-
-For the moment the only support channel available is directly here on GitHub, just open a 
-[GitHub issue](https://github.com/andzeil/easy-mqtt-handler/issues)! I will try to follow-up on whatever it is in a
-timely manner. Please take not that this is only a free-time project. Of course this means there is no guarantee for
-any kind of support.
-
-Hope this tool helps someone with their automation projects. Backlinks to this repo would be great, if you are 
-using this tool in any useful way!
-
-_-- A. Zeil_
