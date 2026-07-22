@@ -12,8 +12,10 @@ Easy MQTT Handler 2 is a desktop MQTT Client.<br/>
 Implemented in Python 3, it connects to an MQTT broker, listens for freely configurable messages, and reacts by executing arbitrary predefined commands.<br/>
 It comes with a Qt5-based GUI.<br/>
 License: GPLv3+.<br/>
-This repository is a fork and continuation of the awesome [Easy MQTT Handler](https://github.com/andzeil/easy-mqtt-handler) developed by [A. Zeil](https://github.com/andzeil).<br/>
+<br/>
 </h4>
+
+This repository is a fork and continuation of the awesome [Easy MQTT Handler](https://github.com/andzeil/easy-mqtt-handler) developed by [A. Zeil](https://github.com/andzeil).
 
 # Table of contents
 
