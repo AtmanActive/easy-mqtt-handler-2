@@ -62,3 +62,25 @@ def test_requirements_cover_the_build_tools():
 def test_a_translation_compiler_is_available():
     # without one the build silently ships untranslated strings
     assert tasks.have_po_compiler()
+
+
+def test_build_python_falls_back_when_there_is_no_project_venv(monkeypatch, tmp_path):
+    """A CI runner installs the requirements into its own interpreter.
+
+    Requiring a project venv made every packaging step fail on all three
+    platforms, because there is no .venv on a runner and never will be.
+    """
+    monkeypatch.setattr(tasks, "VENV_DIR", tmp_path / "does-not-exist")
+
+    assert tasks.build_python() == sys.executable
+
+
+def test_build_python_prefers_the_project_venv(monkeypatch, tmp_path):
+    venv = tmp_path / ".venv"
+    bindir = venv / ("Scripts" if tasks.os.name == "nt" else "bin")
+    bindir.mkdir(parents=True)
+    interpreter = bindir / ("python.exe" if tasks.os.name == "nt" else "python")
+    interpreter.write_text("", encoding="utf-8")
+    monkeypatch.setattr(tasks, "VENV_DIR", venv)
+
+    assert tasks.build_python() == str(interpreter)

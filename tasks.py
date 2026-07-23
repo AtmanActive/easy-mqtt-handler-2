@@ -88,14 +88,23 @@ def fail(message):
     sys.exit(1)
 
 
-def venv_executable(name):
-    """Locate an executable inside the project venv, honouring the platform layout."""
+def venv_python():
+    """Path to the project venv's interpreter, whether or not it exists yet."""
     bindir = VENV_DIR / ("Scripts" if os.name == "nt" else "bin")
     suffix = ".exe" if os.name == "nt" else ""
-    candidate = bindir / f"{name}{suffix}"
-    if not candidate.exists():
-        fail(f"{name} not found in {bindir}. Run: python tasks.py venv")
-    return str(candidate)
+    return bindir / f"python{suffix}"
+
+
+def build_python():
+    """The interpreter that has the build requirements installed.
+
+    A local checkout normally keeps them in the project venv. A CI runner has no
+    project venv and installs them straight into the interpreter running this
+    script, so fall back to that rather than insisting on a venv that will
+    never exist there.
+    """
+    candidate = venv_python()
+    return str(candidate) if candidate.exists() else sys.executable
 
 
 def require_tool(name, hint):
@@ -120,7 +129,21 @@ def run(command, **kwargs):
 
 
 def briefcase(*args):
-    run([venv_executable("briefcase"), *args])
+    # invoked as a module rather than as the console script, so it always comes
+    # from the same environment as the interpreter we picked
+    python = build_python()
+
+    if not briefcase.checked:
+        probe = subprocess.run([python, "-c", "import briefcase"], capture_output=True)
+        if probe.returncode != 0:
+            fail(f"briefcase is not installed for {python}. "
+                 f"Run: python tasks.py venv, or pip install -r requirements.txt")
+        briefcase.checked = True
+
+    run([python, "-m", "briefcase", *args])
+
+
+briefcase.checked = False
 
 
 # --- tasks ------------------------------------------------------------------
@@ -133,7 +156,11 @@ def task_venv(_args):
     else:
         info("Virtual environment already exists, reusing it")
 
-    python = venv_executable("python")
+    # deliberately the venv's own interpreter: this task exists to populate it
+    python = str(venv_python())
+    if not Path(python).exists():
+        fail(f"The virtual environment at {VENV_DIR} has no interpreter.")
+
     run([python, "-m", "pip", "install", "--upgrade", "pip"])
     run([python, "-m", "pip", "install", "-r", str(ROOT / "requirements.txt")])
     ok("Environment ready")
@@ -370,7 +397,7 @@ def task_icons(_args):
 
 def task_test(_args):
     """Run the test suite."""
-    run([venv_executable("python"), "-m", "pytest"])
+    run([build_python(), "-m", "pytest"])
 
 
 def task_dev(_args):
