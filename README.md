@@ -1,5 +1,4 @@
-| ![About](./src/easy_mqtt_handler/assets/toolbar/about.svg) | Developers and tinkerers please check [CONTRIBUTING.md](./docs/CONTRIBUTING.md) for specific information about developing, building, translating and contributing. |
-|------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+
 <h1 align="center">
   <br>
  <img src="./src/easy_mqtt_handler/assets/app-icon/app-icon-256.png" alt="Easy MQTT Handler">
@@ -8,8 +7,8 @@ Easy MQTT Handler 2
   <br>
 </h1>
 <h4 align="center">
-Easy MQTT Handler 2 is a desktop MQTT Client.<br/>
-Implemented in Python 3, it connects to an MQTT broker, listens for freely configurable messages, and reacts by executing arbitrary predefined commands.<br/>
+Easy MQTT Handler 2 is a desktop [MQTT](https://mqtt.org/) Client.<br/>
+Implemented in Python 3, it connects to an [MQTT broker](https://www.home-assistant.io/integrations/mqtt/), listens for freely configurable messages, and reacts by executing arbitrary predefined commands.<br/>
 It comes with a Qt5-based GUI.<br/>
 License: GPLv3+.<br/>
 <br/>
@@ -49,15 +48,15 @@ The tool is neatly integrating into the users' environment by sitting in the tra
 
 # Using this tool
 
-The first time you start Easy MQTT Handler you will see the main application window. It's featuring a tabbed interface
+The first time you start Easy MQTT Handler 2 you will see the main application window. It's featuring a tabbed interface
 with 3 tabs, a toolbar and a statusbar.
 
 ## Connection tab
 
 ![Main Window](docs/assets/connection-tab.png)
 
-In the Connection Tab the user can provide the Hostname, Port, Username, Password and Topic to connect to the MQTT Broker.
-Furthermore, you can configure Easy MQTT Handler to make use of SSL/TLS, by ticking the checkbox **Use SSL/TLS**. Although,
+In the Connection Tab the user can provide the Hostname, Port, Username, Password and Topic to connect to the [MQTT Broker](https://www.home-assistant.io/integrations/mqtt/).
+Furthermore, you can configure Easy MQTT Handler 2 to make use of SSL/TLS, by ticking the checkbox **Use SSL/TLS**. Although,
 SSL/TLS makes the setup a little bit more complicated it might still be worth it for you. You can configure the tool
 just use SSL/TLS for encryption in transit, or even for client certificate authentication. If you want to set this up
 please take a look at the [SSL/TLS Configuration](./docs/SSL.md) documentation. It will walk you through using
@@ -75,7 +74,7 @@ column. Should you need to add some command line parameters to the executable yo
 **Command line arguments** column. Look into the chapter [Integrating with Home Assistant](#integrating-with-home-assistant)
 for some example.
 
-Since **Version 0.1.2** there's a new feature for Power Users: It's parameters. With parameters, you can easily pass dynamic
+Since **Version 0.1.2** there's a new feature for Power Users: parameters. With parameters, you can easily pass dynamic
 command line arguments to the command you want to run. The process is quite straight-forward:
 
 Set up the MQTT Payload like this: `{"command":"notify","args":"test", "param1":"test1", "param2":"test2"}`.
@@ -96,7 +95,7 @@ broker has been established, just before the tool starts listening.
 Leave the tab empty and nothing is sent, which is exactly how the tool behaved before this feature existed.
 
 The typical use is letting each of your machines announce or configure its own entities in Home Assistant
-whenever it comes online, so a desktop and a laptop can each set up what belongs to them.
+whenever it comes online, so a desktop and a laptop can each set up what belongs to them, or a multi-boot machine can announce which operating system is currently running.
 
 Every row is one message:
 
@@ -125,8 +124,8 @@ publishes a discovery message:
 	topic:   homeassistant/<HA Entity>/<HA ID>/config
 	payload: {"name": "<HA Name>", "state_topic": "<Topic>", "unique_id": "<HA ID>"}
 
-So a row with Topic `workstation/dev-box/cpu-temp`, HA Entity `sensor`, HA ID `dev_box_cpu_temp` and
-HA Name `Dev Box CPU Temperature` gives you the entity `sensor.dev_box_cpu_temp` in Home Assistant, already
+So, for example, a row with Topic `workstation/dev-box/operating-system`, HA Entity `sensor`, HA ID `dev_box_operating_system` and
+HA Name `Dev Box Operating System` gives you the entity `sensor.dev_box_operating_system` in Home Assistant, already
 pointed at the right topic. This is exactly what makes the "different desktops configure their own entities"
 idea work: each machine announces what belongs to it as it comes online.
 
@@ -373,3 +372,5 @@ If everything goes as expected you should now see the following Balloon notifica
 If for some reason it didn't work, make sure to check the [Logs tab](#logs-tab). If the logs show that the payload was 
 received and successfully parsed but nothing happens: just try something other than `notify-send`. 
 Sky's the limit here. Make this tool yours!
+
+| ![About](./src/easy_mqtt_handler/assets/toolbar/about.svg) | Developers and tinkerers please check [CONTRIBUTING.md](./docs/CONTRIBUTING.md) for specific information about developing, building, translating and contributing. |
