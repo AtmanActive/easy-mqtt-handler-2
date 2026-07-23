@@ -66,6 +66,16 @@ Linux tools name their output with underscores while the others keep spaces that
 dots, and the mixture meant the release listing did not sort by platform. Only the leading name is
 rewritten, so an architecture such as `x86_64` keeps its underscore.
 
+## Keeping the workflow itself current
+
+GitHub retires the Node.js version its actions run on every so often, and warns on any run that still
+uses an old one. The warnings are harmless until the old runtime is switched off, at which point the
+build stops working, so they are worth clearing when they appear.
+
+To find out which version an action actually runs on, rather than guessing from its release notes:
+
+	gh api repos/actions/upload-artifact/contents/action.yml?ref=v7 --jq .content | base64 -d | grep using:
+
 ## Things worth knowing
 
 * **Nothing is code signed.** Windows SmartScreen will warn on first run, and macOS will refuse to open
