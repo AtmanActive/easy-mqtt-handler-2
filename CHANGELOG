@@ -7,7 +7,10 @@
         of the warnings Windows, macOS and Linux show for unsigned downloads, so users are not left
         wondering whether something is wrong with the file they just downloaded. Every published file
         also carries its platform in the name, so a download says whether it is for Windows, Linux or
-        macOS without the user having to know that .dmg and .AppImage imply one.
+        macOS without the user having to know that .dmg and .AppImage imply one. The application name
+        is spelled the same way in every file, because the Linux tools used underscores where the
+        others used dots and the release listing therefore did not sort by platform. Architecture
+        suffixes such as x86_64 keep their underscore.
 
 [Feature] Linux releases now include a portable .tar.gz, the direct counterpart of the Windows portable
           .zip. It unpacks to a single folder holding the whole program and a ready-made "data" folder,

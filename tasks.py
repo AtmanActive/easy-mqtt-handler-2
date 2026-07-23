@@ -701,6 +701,30 @@ def platform_label(artifact_dir_name):
     return artifact_dir_name.lower().split("-", 1)[0]
 
 
+def normalise_app_name(filename, formal_name):
+    """Spell the application name the same way in every artifact filename.
+
+    The Linux tools name their output "Easy_MQTT_Handler_2" while the others
+    keep the spaces, which GitHub then turns into dots when the file is
+    attached. The result was a release listing that did not sort by platform.
+    Only the leading name is rewritten, so an architecture such as x86_64 keeps
+    its underscore.
+    """
+    canonical = formal_name.replace(" ", ".")
+
+    variants = (canonical,
+                formal_name,
+                formal_name.replace(" ", "_"),
+                formal_name.replace(" ", "-"))
+
+    # longest first, so a variant that is a prefix of another cannot win early
+    for variant in sorted(variants, key=len, reverse=True):
+        if filename.startswith(variant):
+            return canonical + filename[len(variant):]
+
+    return filename
+
+
 def add_platform_to_name(filename, platform, version):
     """Put the platform into an artifact filename, right after the version.
 
@@ -730,7 +754,7 @@ def task_collect_release(args):
     if not source.is_dir():
         fail(f"No artifacts directory at {source}")
 
-    _app_name, _formal_name, version = read_briefcase_metadata()
+    _app_name, formal_name, version = read_briefcase_metadata()
 
     destination.mkdir(parents=True, exist_ok=True)
 
@@ -744,7 +768,8 @@ def task_collect_release(args):
         for artifact in sorted(platform_dir.rglob("*")):
             if not artifact.is_file():
                 continue
-            new_name = add_platform_to_name(artifact.name, platform, version)
+            new_name = add_platform_to_name(
+                normalise_app_name(artifact.name, formal_name), platform, version)
             shutil.copy2(artifact, destination / new_name)
             ok(f"{artifact.name}  ->  {new_name}")
             collected += 1

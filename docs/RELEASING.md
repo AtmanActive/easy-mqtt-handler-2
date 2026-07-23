@@ -38,12 +38,12 @@ the file extension:
 
 | Platform | File | Notes |
 |---|---|---|
-| Windows | `Easy MQTT Handler 2-<version>-windows.msi` | Normal installer |
-| Windows | `Easy MQTT Handler 2-<version>-windows-Portable.zip` | Self-contained, see [portable mode](../README.md#portable-mode) |
-| Linux | `Easy_MQTT_Handler_2-<version>-linux-x86_64.AppImage` | Runs on most modern distributions |
-| Linux | `Easy MQTT Handler 2-<version>-linux-Portable.tar.gz` | The app folder plus a `data` folder, see [portable mode](../README.md#portable-mode) |
-| Linux | `Easy MQTT Handler 2-<version>-linux.flatpak` | Install with `flatpak install <file>` |
-| macOS | `Easy MQTT Handler 2-<version>-macos.dmg` | Apple Silicon |
+| Windows | `Easy.MQTT.Handler.2-<version>-windows.msi` | Normal installer |
+| Windows | `Easy.MQTT.Handler.2-<version>-windows-Portable.zip` | Self-contained, see [portable mode](../README.md#portable-mode) |
+| Linux | `Easy.MQTT.Handler.2-<version>-linux-x86_64.AppImage` | Runs on most modern distributions |
+| Linux | `Easy.MQTT.Handler.2-<version>-linux-Portable.tar.gz` | The app folder plus a `data` folder, see [portable mode](../README.md#portable-mode) |
+| Linux | `Easy.MQTT.Handler.2-<version>-linux-x86_64.flatpak` | Install with `flatpak install <file>` |
+| macOS | `Easy.MQTT.Handler.2-<version>-macos.dmg` | Apple Silicon |
 
 The portable `.tar.gz` deliberately contains the app folder rather than the AppImage. It is the direct
 counterpart of the Windows portable `.zip`: the whole program in one directory, with a `data` folder
@@ -59,8 +59,12 @@ that runtime comes out every August and is supported for two years, so `flatpak_
 looking at roughly once a year.
 
 The renaming happens in the `collect-release` task, not in the packaging tools, so the names briefcase
-produces are left alone. GitHub replaces the spaces with dots when the files are attached, so what
-users finally see is `Easy.MQTT.Handler.2-<version>-windows.msi`.
+produces are left alone until they are gathered for the release.
+
+That task also spells the application name the same way in every file, as `Easy.MQTT.Handler.2`. The
+Linux tools name their output with underscores while the others keep spaces that GitHub turns into
+dots, and the mixture meant the release listing did not sort by platform. Only the leading name is
+rewritten, so an architecture such as `x86_64` keeps its underscore.
 
 ## Things worth knowing
 

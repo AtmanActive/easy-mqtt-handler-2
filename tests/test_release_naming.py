@@ -117,29 +117,83 @@ def test_both_linux_formats_are_labelled_linux(tmp_path, monkeypatch):
 
     produced = sorted(p.name for p in (tmp_path / "release").iterdir())
     assert produced == [
-        "Easy MQTT Handler 2-2.0.5-linux.flatpak",
-        "Easy_MQTT_Handler_2-2.0.5-linux-x86_64.AppImage",
+        "Easy.MQTT.Handler.2-2.0.5-linux-x86_64.AppImage",
+        "Easy.MQTT.Handler.2-2.0.5-linux.flatpak",
     ]
     # neither name should carry the disambiguating upload suffix
     assert not any("appimage-" in name.lower() for name in produced)
 
 
-def test_collect_release_renames_and_gathers(tmp_path, monkeypatch):
+FORMAL_NAME = "Easy MQTT Handler 2"
+
+# exactly what briefcase produced for 2.0.5, before any renaming
+BUILT_NAMES = {
+    "windows": ["Easy MQTT Handler 2-2.0.5.msi",
+                "Easy MQTT Handler 2-2.0.5-Portable.zip"],
+    "linux-appimage": ["Easy_MQTT_Handler_2-2.0.5-x86_64.AppImage",
+                       "Easy MQTT Handler 2-2.0.5-Portable.tar.gz"],
+    "linux-flatpak": ["Easy_MQTT_Handler_2-2.0.5-x86_64.flatpak"],
+    "macos": ["Easy MQTT Handler 2-2.0.5.dmg"],
+}
+
+
+@pytest.mark.parametrize("original,expected", [
+    ("Easy_MQTT_Handler_2-2.0.5-x86_64.AppImage",
+     "Easy.MQTT.Handler.2-2.0.5-x86_64.AppImage"),
+    ("Easy MQTT Handler 2-2.0.5.msi",
+     "Easy.MQTT.Handler.2-2.0.5.msi"),
+    # already canonical, so left alone
+    ("Easy.MQTT.Handler.2-2.0.5.dmg",
+     "Easy.MQTT.Handler.2-2.0.5.dmg"),
+])
+def test_the_app_name_is_spelled_the_same_way_everywhere(original, expected):
+    assert tasks.normalise_app_name(original, FORMAL_NAME) == expected
+
+
+def test_the_architecture_keeps_its_underscore():
+    # x86_64 is not part of the app name and must not be touched
+    renamed = tasks.normalise_app_name(
+        "Easy_MQTT_Handler_2-2.0.5-x86_64.AppImage", FORMAL_NAME)
+
+    assert "x86_64" in renamed
+
+
+def test_an_unrelated_filename_is_left_alone():
+    assert tasks.normalise_app_name("something-else.txt", FORMAL_NAME) == "something-else.txt"
+
+
+def test_every_published_name_sorts_by_platform(tmp_path, monkeypatch):
+    """The whole point: the release listing should group by platform.
+
+    Linux artifacts used underscores while the rest used dots, so they sorted
+    away from everything else in the release listing.
+    """
     source = tmp_path / "artifacts"
-    for platform, original, _expected in REAL_ARTIFACTS:
-        platform_dir = source / platform
-        platform_dir.mkdir(parents=True, exist_ok=True)
-        (platform_dir / original).write_text("x", encoding="utf-8")
+    for platform_dir, names in BUILT_NAMES.items():
+        (source / platform_dir).mkdir(parents=True)
+        for name in names:
+            (source / platform_dir / name).write_text("x", encoding="utf-8")
 
     monkeypatch.setattr(tasks, "ROOT", tmp_path)
     monkeypatch.setattr(tasks, "read_briefcase_metadata",
-                        lambda: ("easy-mqtt-handler", "Easy MQTT Handler 2", VERSION))
+                        lambda: ("easy-mqtt-handler", FORMAL_NAME, VERSION))
 
     args = type("Args", (), {"source": "artifacts", "dest": "release"})()
     tasks.task_collect_release(args)
 
     produced = sorted(p.name for p in (tmp_path / "release").iterdir())
-    assert produced == sorted(expected for _p, _o, expected in REAL_ARTIFACTS)
+
+    assert produced == [
+        "Easy.MQTT.Handler.2-2.0.5-linux-Portable.tar.gz",
+        "Easy.MQTT.Handler.2-2.0.5-linux-x86_64.AppImage",
+        "Easy.MQTT.Handler.2-2.0.5-linux-x86_64.flatpak",
+        "Easy.MQTT.Handler.2-2.0.5-macos.dmg",
+        "Easy.MQTT.Handler.2-2.0.5-windows-Portable.zip",
+        "Easy.MQTT.Handler.2-2.0.5-windows.msi",
+    ]
+
+    # nothing may still be spelled with underscores in the name part
+    assert not any(name.startswith("Easy_") for name in produced)
 
 
 def test_collect_release_fails_when_there_is_nothing_to_collect(tmp_path, monkeypatch):
