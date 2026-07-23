@@ -12,6 +12,8 @@ you ask it to, so an ordinary commit never builds or publishes anything.
    everything else, including the artifact filenames and the About window, reads it from there.
 2. Add a matching `# Version <version>` section to the `CHANGELOG`. The workflow turns that section into
    the release notes, and the test suite fails if it is missing, so you cannot forget it.
+   A standing note explaining the warnings users see for unsigned downloads is appended automatically,
+   so it does not need repeating in the CHANGELOG. It lives in `RELEASE_NOTES_FOOTER` in `tasks.py`.
 3. Commit and push both.
 
 ## Running it
@@ -31,12 +33,28 @@ option on, open it, check the files, and press **Publish release** when you are 
 
 ## What it produces
 
+Every file carries its platform in the name, so nobody has to work out which download is theirs from
+the file extension:
+
 | Platform | File | Notes |
 |---|---|---|
-| Windows | `Easy MQTT Handler 2-<version>.msi` | Normal installer |
-| Windows | `Easy MQTT Handler 2-<version>-Portable.zip` | Self-contained, see [portable mode](../README.md#portable-mode) |
-| Linux | `Easy MQTT Handler 2-<version>-x86_64.AppImage` | Runs on most modern distributions |
-| macOS | `Easy MQTT Handler 2-<version>.dmg` | Apple Silicon |
+| Windows | `Easy MQTT Handler 2-<version>-windows.msi` | Normal installer |
+| Windows | `Easy MQTT Handler 2-<version>-windows-Portable.zip` | Self-contained, see [portable mode](../README.md#portable-mode) |
+| Linux | `Easy_MQTT_Handler_2-<version>-linux-x86_64.AppImage` | Runs on most modern distributions |
+| Linux | `Easy MQTT Handler 2-<version>-linux.flatpak` | Install with `flatpak install <file>` |
+| macOS | `Easy MQTT Handler 2-<version>-macos.dmg` | Apple Silicon |
+
+The two Linux builds are separate jobs, so if one of them breaks the other is still produced. They upload
+under the names `linux-appimage` and `linux-flatpak`, because GitHub requires upload names to be unique,
+but only the word `linux` reaches the released filename.
+
+The Flatpak is built against the freedesktop runtime pinned in `pyproject.toml`. A new major version of
+that runtime comes out every August and is supported for two years, so `flatpak_runtime_version` needs
+looking at roughly once a year.
+
+The renaming happens in the `collect-release` task, not in the packaging tools, so the names briefcase
+produces are left alone. GitHub replaces the spaces with dots when the files are attached, so what
+users finally see is `Easy.MQTT.Handler.2-<version>-windows.msi`.
 
 ## Things worth knowing
 

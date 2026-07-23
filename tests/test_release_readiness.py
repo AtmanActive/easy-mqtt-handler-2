@@ -44,6 +44,22 @@ def test_release_notes_stop_at_the_previous_version():
     assert "# Version " not in result.stdout
 
 
+def test_release_notes_warn_about_unsigned_downloads():
+    # every published build is unsigned, so the warning must never be forgotten
+    result = run_task("release-notes")
+
+    assert "unsigned downloads" in result.stdout.lower()
+    for platform_hint in ("SmartScreen", "Gatekeeper", "AppImage"):
+        assert platform_hint in result.stdout
+
+
+def test_release_notes_keep_the_changelog_entry_above_the_footer():
+    result = run_task("release-notes")
+
+    # the version's own notes must come first, not be buried under boilerplate
+    assert result.stdout.index("[") < result.stdout.index("A note on unsigned downloads")
+
+
 def test_metadata_reader_agrees_with_pyproject():
     app_name, formal_name, version = tasks.read_briefcase_metadata()
 

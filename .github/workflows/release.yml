@@ -62,15 +62,27 @@ jobs:
           - os: windows-latest
             label: Windows
             artifact: windows
+          # an AppImage runs on any reasonably modern distribution
           - os: ubuntu-latest
-            label: Linux
-            artifact: linux
+            label: Linux AppImage
+            artifact: linux-appimage
+            briefcase_platform: linux
+            briefcase_format: appimage
+          # Flatpak is its own job rather than a second command in the AppImage
+          # one, so that a failure in either still leaves the other publishable
+          - os: ubuntu-latest
+            label: Linux Flatpak
+            artifact: linux-flatpak
+            briefcase_platform: linux
+            briefcase_format: flatpak
           # macos-latest is Apple Silicon, so this produces an arm64 build.
           # PyQt5 5.15.11 publishes wheels for both architectures, but only for
           # macOS 11 and newer.
           - os: macos-latest
             label: macOS
             artifact: macos
+            briefcase_platform: macOS
+            briefcase_format: app
 
     steps:
       - uses: actions/checkout@v5
@@ -89,6 +101,16 @@ jobs:
             libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
             libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xfixes0
 
+      # briefcase drives these two to build the bundle and install the
+      # freedesktop runtime it is built against
+      - name: Install the Flatpak tooling
+        if: matrix.briefcase_format == 'flatpak'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --if-not-exists --user \
+            flathub https://flathub.org/repo/flathub.flatpakrepo
+
       - name: Install the build requirements
         run: |
           python -m pip install --upgrade pip
@@ -103,21 +125,20 @@ jobs:
       - name: Compile the translations
         run: python tasks.py compile-translations
 
+      # Windows is the one target that produces two artifacts, so it gets its
+      # own step; everything else is driven straight from the matrix
       - name: Package for Windows
         if: runner.os == 'Windows'
         run: |
           python tasks.py package --platform windows
           python tasks.py package-portable
 
-      # an AppImage runs on any reasonably modern distribution, which suits a
-      # downloadable release better than a distribution specific package
-      - name: Package for Linux
-        if: runner.os == 'Linux'
-        run: python tasks.py package --platform linux --format appimage
-
-      - name: Package for macOS
-        if: runner.os == 'macOS'
-        run: python tasks.py package --platform macOS --format app
+      - name: Package for ${{ matrix.label }}
+        if: matrix.briefcase_format
+        run: >
+          python tasks.py package
+          --platform ${{ matrix.briefcase_platform }}
+          --format ${{ matrix.briefcase_format }}
 
       - name: Show what was built
         shell: bash
@@ -146,13 +167,14 @@ jobs:
         with:
           path: artifacts
 
-      # the artifacts arrive in one directory per platform; flatten them so
-      # they can all be attached to the release in one go
+      # the artifacts arrive in one directory per platform. flatten them into a
+      # single folder, putting the platform into each filename on the way, so a
+      # download says what it is for without the user having to know that .dmg
+      # means macOS and .AppImage means Linux
       - name: Collect the built files
         shell: bash
         run: |
-          mkdir -p release
-          find artifacts -type f -exec cp {} release/ \;
+          python tasks.py collect-release
           echo "Files to publish:"
           ls -lh release/
 

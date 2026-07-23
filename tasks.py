@@ -59,6 +59,26 @@ This readme is only here so that the folder survives unzipping; some archive
 tools silently drop empty folders. You can delete this file, but keep the folder.
 """
 
+# Appended to every release's notes. It applies to every build we publish, so it
+# lives here rather than being retyped into the CHANGELOG for each version,
+# where it would eventually be forgotten.
+RELEASE_NOTES_FOOTER = """
+
+---
+
+### A note on unsigned downloads
+
+These files are not code signed, so your system will warn you the first time you run them.
+That warning is expected and does not mean there is anything wrong with the download.
+
+- **Windows** — SmartScreen shows "Windows protected your PC". Choose **More info**, then **Run anyway**.
+- **macOS** — Gatekeeper will not open the app on a double click. Right click it, choose **Open**, and
+  confirm. You only need to do this once.
+- **Linux** — make the AppImage executable before running it: `chmod +x *.AppImage`
+
+Code signing requires paid certificates from Microsoft and Apple, which this project does not have.
+"""
+
 # marker that identifies a source file carrying translatable strings
 TRANSLATION_MARKER = "translate = gettext.translation"
 
@@ -559,6 +579,71 @@ def task_package_portable(args):
     ok(f"Unzips to a single folder: {label}\\")
 
 
+def platform_label(artifact_dir_name):
+    """The word that goes into a filename for a per-platform artifact folder.
+
+    Upload names have to be unique, so a platform producing more than one kind
+    of package uploads as e.g. "linux-appimage" and "linux-flatpak". Only the
+    platform belongs in the released filename; which format it is, is already
+    plain from the extension.
+    """
+    return artifact_dir_name.lower().split("-", 1)[0]
+
+
+def add_platform_to_name(filename, platform, version):
+    """Put the platform into an artifact filename, right after the version.
+
+    Users should be able to tell what a download is for from its name, rather
+    than having to know that .dmg means macOS and .AppImage means Linux.
+    """
+    if platform.lower() in filename.lower():
+        # already labelled, so do not label it twice
+        return filename
+
+    marker = f"-{version}"
+    if marker in filename:
+        return filename.replace(marker, f"{marker}-{platform}", 1)
+
+    # no version in the name, so fall back to just before the extension
+    stem, dot, extension = filename.rpartition(".")
+    if dot:
+        return f"{stem}-{platform}.{extension}"
+    return f"{filename}-{platform}"
+
+
+def task_collect_release(args):
+    """Gather the per-platform build artifacts into one folder, named by platform."""
+    source = ROOT / (args.source or "artifacts")
+    destination = ROOT / (args.dest or "release")
+
+    if not source.is_dir():
+        fail(f"No artifacts directory at {source}")
+
+    _app_name, _formal_name, version = read_briefcase_metadata()
+
+    destination.mkdir(parents=True, exist_ok=True)
+
+    collected = 0
+    # each subdirectory is one platform's upload, named by the build matrix
+    for platform_dir in sorted(source.iterdir()):
+        if not platform_dir.is_dir():
+            continue
+        platform = platform_label(platform_dir.name)
+
+        for artifact in sorted(platform_dir.rglob("*")):
+            if not artifact.is_file():
+                continue
+            new_name = add_platform_to_name(artifact.name, platform, version)
+            shutil.copy2(artifact, destination / new_name)
+            ok(f"{artifact.name}  ->  {new_name}")
+            collected += 1
+
+    if collected == 0:
+        fail(f"No files found under {source}")
+
+    ok(f"Collected {collected} file(s) into {destination.relative_to(ROOT)}/")
+
+
 def task_release_notes(_args):
     """Print the CHANGELOG section for the current version, for release notes."""
     _app_name, _formal_name, version = read_briefcase_metadata()
@@ -587,6 +672,7 @@ def task_release_notes(_args):
 
     # printed rather than written to a file, so the caller decides where it goes
     print(body)
+    print(RELEASE_NOTES_FOOTER)
 
 
 def task_build_all_linux(_args):
@@ -607,6 +693,7 @@ TASKS = {
     "build": task_build,
     "package": task_package,
     "package-portable": task_package_portable,
+    "collect-release": task_collect_release,
     "release-notes": task_release_notes,
     "build-all-linux": task_build_all_linux,
 }
@@ -621,6 +708,8 @@ def main():
     parser.add_argument("task", choices=TASKS.keys(), help="the task to run")
     parser.add_argument("--platform", help="briefcase platform override (e.g. windows, linux, macOS)")
     parser.add_argument("--format", help="briefcase output format (e.g. app, appimage, flatpak)")
+    parser.add_argument("--source", help="collect-release: directory holding the per-platform artifacts")
+    parser.add_argument("--dest", help="collect-release: directory to gather the renamed files into")
     args = parser.parse_args()
 
     TASKS[args.task](args)

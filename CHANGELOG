@@ -3,7 +3,20 @@
         by hand from the Actions tab and has no push, pull request or tag trigger, so an ordinary commit
         never builds or publishes anything. It runs the test suite on all three platforms, builds the
         .msi and portable .zip, an AppImage and a .dmg, and attaches them to a release whose notes come
-        from this file. See docs/RELEASING.md.
+        from this file. See docs/RELEASING.md. Every release's notes also carry a standing explanation
+        of the warnings Windows, macOS and Linux show for unsigned downloads, so users are not left
+        wondering whether something is wrong with the file they just downloaded. Every published file
+        also carries its platform in the name, so a download says whether it is for Windows, Linux or
+        macOS without the user having to know that .dmg and .AppImage imply one.
+
+[Feature] Linux releases now include a Flatpak bundle alongside the AppImage, so the tool can be
+          installed with "flatpak install <file>" on distributions where that is the usual route. The
+          two Linux formats are built as separate jobs, so a failure in one still leaves the other
+          publishable.
+
+[Fix] The Flatpak build targeted the freedesktop 22.08 runtime, which reached end of life in August
+      2024. It now targets 25.08. A new major runtime appears each August with a two year support
+      window, so this needs revisiting about once a year.
 
 [Fix] Building from a clean checkout works again. build and package passed --update unconditionally,
       which fails when there is no bundle to update yet, so the very first build in a fresh clone died.

@@ -49,7 +49,9 @@ linuxdeploy_plugins = []
 
 [tool.briefcase.app.easy-mqtt-handler.linux.flatpak]
 flatpak_runtime = "org.freedesktop.Platform"
-flatpak_runtime_version = "22.08"
+# a new freedesktop major version appears each August and is supported for two
+# years, so this needs revisiting roughly annually. 22.08 was EOL in Aug 2024.
+flatpak_runtime_version = "25.08"
 flatpak_sdk = "org.freedesktop.Sdk"
 
 [tool.briefcase.app.easy-mqtt-handler.windows]
