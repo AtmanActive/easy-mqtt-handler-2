@@ -109,3 +109,39 @@ msgstr "Verbindung zum Broker getrennt."
 #: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:263
 msgid "Reconnecting to Broker."
 msgstr "Baue neue Verbindung zum Broker auf."
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:101
+msgid "Sending {0} startup message(s)."
+msgstr "Sende {0} Startnachricht(en)."
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:111
+msgid "Couldn't send startup message to topic \"{0}\" (error {1})."
+msgstr "Startnachricht an Topic \"{0}\" konnte nicht gesendet werden (Fehler {1})."
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:116
+msgid "Sent startup message \"{0}\" to topic \"{1}\"."
+msgstr "Startnachricht \"{0}\" an Topic \"{1}\" gesendet."
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:120
+msgid "Couldn't send startup message to topic \"{0}\": {1}"
+msgstr "Startnachricht an Topic \"{0}\" konnte nicht gesendet werden: {1}"
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:123
+msgid "All startup messages sent."
+msgstr "Alle Startnachrichten gesendet."
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:135
+msgid "Skipping Home Assistant discovery for topic \"{0}\": {1}"
+msgstr "Home-Assistant-Erkennung für Topic \"{0}\" übersprungen: {1}"
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:147
+msgid "Couldn't send Home Assistant discovery to topic \"{0}\" (error {1})."
+msgstr "Home-Assistant-Erkennung an Topic \"{0}\" konnte nicht gesendet werden (Fehler {1})."
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:152
+msgid "Announced Home Assistant entity via topic \"{0}\"."
+msgstr "Home-Assistant-Entität über Topic \"{0}\" angemeldet."
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:155
+msgid "Couldn't send Home Assistant discovery to topic \"{0}\": {1}"
+msgstr "Home-Assistant-Erkennung an Topic \"{0}\" konnte nicht gesendet werden: {1}"

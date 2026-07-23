@@ -1,0 +1,62 @@
+# easy MQTT handler 2 - translation file - StartupTabWidget.po
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 AtmanActive
+
+#
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-07-22 18:00+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: xgettext\n"
+
+#: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:41
+msgid ""
+"These messages are published every time a connection to the broker has been "
+"established, before listening starts. Topics are absolute, they are not "
+"prefixed with the topic from the Connection tab. Leave this empty to disable.\n"
+"Fill in HA ID to have Home Assistant create an entity for the message "
+"automatically. Leave HA ID empty to just send the message."
+msgstr ""
+"These messages are published every time a connection to the broker has been "
+"established, before listening starts. Topics are absolute, they are not "
+"prefixed with the topic from the Connection tab. Leave this empty to disable.\n"
+"Fill in HA ID to have Home Assistant create an entity for the message "
+"automatically. Leave HA ID empty to just send the message."
+
+#: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:52
+msgid "HA Entity"
+msgstr "HA Entity"
+
+#: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:52
+msgid "HA ID"
+msgstr "HA ID"
+
+#: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:52
+msgid "HA Name"
+msgstr "HA Name"
+
+#: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:49
+msgid "Topic"
+msgstr "Topic"
+
+#: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:49
+msgid "Payload"
+msgstr "Payload"
+
+#: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:49
+msgid "QoS"
+msgstr "QoS"
+
+#: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:49
+msgid "Retain"
+msgstr "Retain"
+
+#: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:55
+msgid "Add Message"
+msgstr "Add Message"
+
+#: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:57
+msgid "Remove Message"
+msgstr "Remove Message"

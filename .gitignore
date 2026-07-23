@@ -8,6 +8,14 @@ __pycache__/
 build/
 dist/
 MANIFEST
+src/easy_mqtt_handler.dist-info/
+
+# briefcase working files
+.briefcase/
+logs/
+
+# pytest
+.pytest_cache/
 
 # Environments
 .env

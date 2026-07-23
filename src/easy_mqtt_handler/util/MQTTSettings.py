@@ -141,8 +141,10 @@ class MQTTSettings(object):
 
         if os.path.exists(self._filename):
             try:
-                sf = open(self._filename, 'r')
-                return json.load(sf)
+                # utf-8-sig so a file hand-edited in an editor that adds a BOM
+                # still loads; it reads plain UTF-8 unchanged
+                with open(self._filename, 'r', encoding='utf-8-sig') as sf:
+                    return json.load(sf)
             # TODO: implement better exception handling
             except IOError:
                 # self.add_log_line("Settings File couldn't be loaded.")
@@ -156,7 +158,7 @@ class MQTTSettings(object):
 
     def save_settings(self):
         try:
-            with open(self._filename, 'w') as sf:
+            with open(self._filename, 'w', encoding='utf-8') as sf:
                 json.dump(self._settings, sf)
                 sf.close()
 

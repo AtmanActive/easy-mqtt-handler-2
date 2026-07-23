@@ -29,6 +29,10 @@ msgid "Payload Handlers"
 msgstr "Aktionen"
 
 #: ./src/easy_mqtt_handler/qt/MainWindow.py:89
+msgid "Send on Startup"
+msgstr "Beim Start senden"
+
+#: ./src/easy_mqtt_handler/qt/MainWindow.py:90
 msgid "Logs"
 msgstr "Logs"
 

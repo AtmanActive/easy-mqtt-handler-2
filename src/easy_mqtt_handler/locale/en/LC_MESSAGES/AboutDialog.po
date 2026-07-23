@@ -47,3 +47,39 @@ msgstr "Humanity Icons License"
 #: ./src/easy_mqtt_handler/qt/AboutDialog.py:97
 msgid "Close"
 msgstr "Close"
+
+#: ./src/easy_mqtt_handler/qt/AboutDialog.py:146
+msgid "License"
+msgstr "License"
+
+#: ./src/easy_mqtt_handler/qt/AboutDialog.py:52
+msgid "Version {0}"
+msgstr "Version {0}"
+
+#: ./src/easy_mqtt_handler/qt/AboutDialog.py:67
+msgid ""
+"Easy MQTT Handler connects to an MQTT broker, listens for the messages you "
+"define and runs a command of your choice whenever one of them arrives.\n"
+"\n"
+"It can also publish messages of its own as soon as it connects, and have Home "
+"Assistant create matching entities for them automatically, so each machine can "
+"announce what belongs to it.\n"
+"\n"
+"It stays out of the way in the system tray while it works."
+msgstr ""
+"Easy MQTT Handler connects to an MQTT broker, listens for the messages you "
+"define and runs a command of your choice whenever one of them arrives.\n"
+"\n"
+"It can also publish messages of its own as soon as it connects, and have Home "
+"Assistant create matching entities for them automatically, so each machine can "
+"announce what belongs to it.\n"
+"\n"
+"It stays out of the way in the system tray while it works."
+
+#: ./src/easy_mqtt_handler/qt/AboutDialog.py:82
+msgid ""
+"Released under the GNU General Public License v3 or later. The full text is in "
+"the License tab."
+msgstr ""
+"Released under the GNU General Public License v3 or later. The full text is in "
+"the License tab."

@@ -5,11 +5,15 @@ The repository is structured in a way that should help you to navigate it.
 Inside the root directory you will find all the needed files for the build system, the License and files related to 
 the handling of Git.
 
-There's two folders on the root directory:
+The build and translation tasks live in `tasks.py` in the root directory. It replaces the
+shell scripts that used to sit in `src/scripts/`, and runs on Windows, Linux and macOS
+alike. Run `python tasks.py --help` for the list of available tasks.
+
+There's three folders on the root directory:
 
 * The [docs](.) folder, which contains all the documentation available for this tool
-* The [src](../src) folder which contains the main program ([./src/easy_mqtt_handler/](../src/easy_mqtt_handler)), 
-as well as the [scripts/](../src/scripts) folder, which contains shell scripts to assist the build and translation process
+* The [src](../src) folder which contains the main program ([./src/easy_mqtt_handler/](../src/easy_mqtt_handler))
+* The [tests](../tests) folder, which contains the test suite
 
 Inside the tool's folder ([./src/easy_mqtt_handler/](../src/easy_mqtt_handler)) there's the following structure of subdirectories:
 

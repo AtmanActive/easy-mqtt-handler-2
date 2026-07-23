@@ -18,10 +18,12 @@ from easy_mqtt_handler.qt.AboutDialog import AboutDialog
 from easy_mqtt_handler.qt.tabs.ConnectionTabWidget import ConnectionTabWidget
 from easy_mqtt_handler.qt.tabs.LogTabWidget import LogTabWidget
 from easy_mqtt_handler.qt.tabs.PayloadTabWidget import PayloadTabWidget
+from easy_mqtt_handler.qt.tabs.StartupTabWidget import StartupTabWidget
 
 from easy_mqtt_handler.util.Icons import *
 from easy_mqtt_handler.util.MQTTPayloads import MQTTPayloads
 from easy_mqtt_handler.util.MQTTSettings import MQTTSettings
+from easy_mqtt_handler.util.MQTTStartupMessages import MQTTStartupMessages
 from easy_mqtt_handler.util.MQTTWorkerThread import MQTTWorkerThread
 from easy_mqtt_handler.util.Tools import Utils
 
@@ -35,23 +37,22 @@ _ = translate.gettext
 # consts go here
 PROG_NAME = _("Easy MQTT Handler")
 
-# get locations of config files
-config_path = Utils.get_config_path()
-payload_file = config_path + "default-payloads.json"
-settings_file = config_path + "default-settings.json"
+# config file locations are resolved per instance rather than at import time,
+# so that portable mode is decided from the real runtime environment
 
 
 class MainWindow(QMainWindow):
     tab_widget: QTabWidget
     settings: MQTTSettings
     payloads: MQTTPayloads
+    startup_messages: MQTTStartupMessages
     unsaved_changes = False
 
     """
     Main Window init()
     """
 
-    def __init__(self, app, mqtt_config_file, payload_config_file):
+    def __init__(self, app, mqtt_config_file, payload_config_file, startup_config_file=""):
         super().__init__()
 
         self.worker_thread: QThread
@@ -60,8 +61,10 @@ class MainWindow(QMainWindow):
         app.setQuitOnLastWindowClosed(False)
 
         # load current configs
-        self.settings = MQTTSettings(mqtt_config_file if mqtt_config_file != "" else settings_file)
-        self.payloads = MQTTPayloads(payload_config_file if payload_config_file != "" else payload_file)
+        self.settings = MQTTSettings(mqtt_config_file if mqtt_config_file != "" else Utils.get_settings_file())
+        self.payloads = MQTTPayloads(payload_config_file if payload_config_file != "" else Utils.get_payload_file())
+        self.startup_messages = MQTTStartupMessages(
+            startup_config_file if startup_config_file != "" else Utils.get_startup_file())
 
         # load the dialog icon
         self.setWindowIcon(Icons.load_icon(APP_ICON))
@@ -82,15 +85,18 @@ class MainWindow(QMainWindow):
         self.log_tab = LogTabWidget()
         self.connection_tab = ConnectionTabWidget()
         self.payload_editor = PayloadTabWidget()
+        self.startup_editor = StartupTabWidget()
 
         # add them to the tab widget
         self.tab_widget.addTab(self.connection_tab, _("Connection"))
         self.tab_widget.addTab(self.payload_editor, _("Payload Handlers"))
+        self.tab_widget.addTab(self.startup_editor, _("Send on Startup"))
         self.tab_widget.addTab(self.log_tab, _("Logs"))
 
         # wire change handlers
         self.connection_tab.settings_changed.connect(self.on_connection_settings_changed)
         self.payload_editor.settings_changed.connect(self.on_payloads_changed)
+        self.startup_editor.settings_changed.connect(self.on_startup_messages_changed)
 
         # now that init is done receive signals again
         self.tab_widget.blockSignals(False)
@@ -170,6 +176,14 @@ class MainWindow(QMainWindow):
         # resize and reposition main window
         self.width = app.primaryScreen().size().width() // 4
         self.height = app.primaryScreen().size().height() // 4
+
+        # a quarter of the screen is not necessarily wide enough to show every
+        # tab label, and a tab bar that does not fit collapses into scroll
+        # arrows. widen the window instead, and let the tab bar decide how much
+        # room it needs, so longer translated labels are covered too
+        minimum_width = self.tab_widget.tabBar().sizeHint().width() + 40
+        self.width = max(self.width, minimum_width)
+        self.setMinimumWidth(minimum_width)
         pos_x = app.primaryScreen().size().width() // 2
         pos_y = app.primaryScreen().size().height() // 2
         self.setGeometry(pos_x - (self.width // 2), pos_y - (self.height // 2), self.width, self.height)
@@ -213,19 +227,23 @@ class MainWindow(QMainWindow):
         self.activateWindow()
         self.raise_()
 
-    def on_connection_settings_changed(self, changed):
+    def mark_tab_unsaved(self, tab, title):
+        # look the index up rather than hardcoding it, so that adding or
+        # reordering tabs cannot silently mark the wrong one
         self.setWindowTitle("*" + PROG_NAME)
-        self.tab_widget.setTabText(0, "*" + _("Connection"))
+        self.tab_widget.setTabText(self.tab_widget.indexOf(tab), "*" + title)
         self.unsaved_changes = True
         self.save_action.setVisible(True)
         self.action_seperator.setVisible(True)
 
+    def on_connection_settings_changed(self, changed):
+        self.mark_tab_unsaved(self.connection_tab, _("Connection"))
+
     def on_payloads_changed(self, changed):
-        self.setWindowTitle("*" + PROG_NAME)
-        self.tab_widget.setTabText(1, "*" + _("Payload Handlers"))
-        self.unsaved_changes = True
-        self.save_action.setVisible(True)
-        self.action_seperator.setVisible(True)
+        self.mark_tab_unsaved(self.payload_editor, _("Payload Handlers"))
+
+    def on_startup_messages_changed(self, changed):
+        self.mark_tab_unsaved(self.startup_editor, _("Send on Startup"))
 
     def on_connect_action(self):
         if self.worker_thread.mqtt_connect():
@@ -248,7 +266,7 @@ class MainWindow(QMainWindow):
             case 102 | 103 | 104:
                 self.disconnect_action.setVisible(False)
                 self.reconnect_action.setVisible(False)
-                self.tab_widget.setCurrentIndex(2)
+                self.tab_widget.setCurrentWidget(self.log_tab)
 
             case 101:
                 self.connect_action.setVisible(False)
@@ -260,7 +278,7 @@ class MainWindow(QMainWindow):
                 self.connect_action.setEnabled(True)
 
             case 200:
-                self.tab_widget.setCurrentIndex(0)
+                self.tab_widget.setCurrentWidget(self.connection_tab)
 
             case 300:
                 self.disconnect_action.setVisible(True)
@@ -297,11 +315,15 @@ class MainWindow(QMainWindow):
     def save_settings(self):
         if MQTTSettings.get_instance().save_settings():
             # remove mark from tab title
-            self.tab_widget.setTabText(0, _("Connection"))
+            self.tab_widget.setTabText(self.tab_widget.indexOf(self.connection_tab), _("Connection"))
 
         if MQTTPayloads.get_instance().save_payload_data():
             # remove mark from tab title
-            self.tab_widget.setTabText(1, _("Payload Handlers"))
+            self.tab_widget.setTabText(self.tab_widget.indexOf(self.payload_editor), _("Payload Handlers"))
+
+        if MQTTStartupMessages.get_instance().save_startup_data():
+            # remove mark from tab title
+            self.tab_widget.setTabText(self.tab_widget.indexOf(self.startup_editor), _("Send on Startup"))
 
         self.setWindowTitle(PROG_NAME)
         self.unsaved_changes = False

@@ -19,6 +19,7 @@ from paho.mqtt.client import ssl
 
 from easy_mqtt_handler.util.MQTTPayloads import MQTTPayloads
 from easy_mqtt_handler.util.MQTTSettings import MQTTSettings
+from easy_mqtt_handler.util.MQTTStartupMessages import MQTTStartupMessages, DiscoveryError, discovery_for
 from easy_mqtt_handler.util.Tools import Utils
 
 # Set the local directory
@@ -83,8 +84,82 @@ class MQTTWorkerThread(QThread):
             self.add_log_line.emit(_("Couldn't subscribe to topic \"{0}/#\". You provided an invalid or emtpy topic.").
                                    format(self.settings.topic))
             self.track_status.emit(103)
+
+        # publish whatever the user configured under "Send on Startup" before we
+        # settle into listening. subscribing first means any reply to these
+        # messages is already covered
+        self.send_startup_messages(client)
+
         self.add_log_line.emit(_("Listening to Broker."))
         self.track_status.emit(300)
+
+    def send_discovery_message(self, client, message):
+        """Publish the Home Assistant discovery message for a startup message.
+
+        Does nothing for rows that have no HA ID. A discovery failure is
+        reported but never prevents the startup message itself from going out.
+        """
+        try:
+            discovery = discovery_for(message)
+        except DiscoveryError as error:
+            self.add_log_line.emit(
+                _("Skipping Home Assistant discovery for topic \"{0}\": {1}")
+                .format(message["topic"], error))
+            return
+
+        if discovery is None:
+            return
+
+        try:
+            result = client.publish(discovery["topic"], discovery["payload"],
+                                    qos=discovery["qos"], retain=discovery["retain"])
+            if result.rc != mqtt.MQTT_ERR_SUCCESS:
+                self.add_log_line.emit(
+                    _("Couldn't send Home Assistant discovery to topic \"{0}\" (error {1}).")
+                    .format(discovery["topic"], result.rc))
+                return
+
+            self.add_log_line.emit(
+                _("Announced Home Assistant entity via topic \"{0}\".").format(discovery["topic"]))
+        except (ValueError, OSError) as error:
+            self.add_log_line.emit(
+                _("Couldn't send Home Assistant discovery to topic \"{0}\": {1}")
+                .format(discovery["topic"], error))
+
+    def send_startup_messages(self, client):
+        """Publish the configured startup messages, if there are any."""
+        messages = MQTTStartupMessages.get_instance().publishable_messages()
+
+        if not messages:
+            return
+
+        self.add_log_line.emit(_("Sending {0} startup message(s).").format(len(messages)))
+
+        for message in messages:
+            # announce the entity to Home Assistant first, so that it exists by
+            # the time the value below arrives on its state topic
+            self.send_discovery_message(client, message)
+
+            try:
+                result = client.publish(message["topic"], message["payload"],
+                                        qos=message["qos"], retain=message["retain"])
+                # a failure here must not stop the remaining messages or the
+                # connection itself, so report it and carry on
+                if result.rc != mqtt.MQTT_ERR_SUCCESS:
+                    self.add_log_line.emit(
+                        _("Couldn't send startup message to topic \"{0}\" (error {1}).")
+                        .format(message["topic"], result.rc))
+                    continue
+
+                self.add_log_line.emit(
+                    _("Sent startup message \"{0}\" to topic \"{1}\".")
+                    .format(message["payload"], message["topic"]))
+            except (ValueError, OSError) as error:
+                self.add_log_line.emit(
+                    _("Couldn't send startup message to topic \"{0}\": {1}")
+                    .format(message["topic"], error))
+
+        self.add_log_line.emit(_("All startup messages sent."))
 
     def router(self, data):
         mqtt_command = data.get("command")

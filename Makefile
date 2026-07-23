@@ -1,46 +1,59 @@
-# easy MQTT handler Makefile - Copyright (C) 2023 A. Zeil
-NAME=easy_mqtt_handler
+# easy MQTT handler 2 Makefile - Copyright (C) 2023 A. Zeil
+#
+# This is a thin convenience wrapper. All real logic lives in tasks.py, which
+# runs identically on Windows, Linux and macOS. You can always call it directly:
+#
+#     python tasks.py <task>
+#     python tasks.py --help
+#
+PYTHON ?= python3
 
-# Target to activate venv and install required python libs
-activate-venv:
-		python3 -m venv .venv; \
-		. .venv/bin/activate; \
-		./.venv/bin/pip install -r requirements.txt
+.PHONY: help venv activate-venv clean translation-templates compile-translations \
+        regenerate-icons test dev package package-portable build-all-linux \
+        build-linux-appimage build-linux-flatpak build-macos-app
 
-# Target for housekeeping
+help:
+	@$(PYTHON) tasks.py --help
+
+venv:
+	@$(PYTHON) tasks.py venv
+
+# kept under its historical name so existing docs and muscle memory still work
+activate-venv: venv
+
 clean:
-	rm -rf build/ dist/ logs/ .venv/ src/$(NAME).dist-info/ src/$(NAME)/__pycache__ src/$(NAME)/locale/templates
-	find -depth -type d -name "__pycache__" -exec rm -rf {} \;
-	find -type f -name "*.mo" -exec rm {} \;
+	@$(PYTHON) tasks.py clean
 
-# Translation related targets
 translation-templates:
-		mkdir -p ./src/easy_mqtt_handler/locale/templates/
-		./src/scripts/translation-generate-pots.sh
+	@$(PYTHON) tasks.py translation-templates
 
 compile-translations:
-		./src/scripts/translation-compile-mos.sh
+	@$(PYTHON) tasks.py compile-translations
 
-# Target to regenerate icons - only needed if application icon was changed
 regenerate-icons:
-		./src/scripts/regenerate_icon_files.sh
+	@$(PYTHON) tasks.py icons
 
-# Target to create a Linux package for the distribution running on the current machine
-package: activate-venv
-	.venv/bin/briefcase package
+test:
+	@$(PYTHON) tasks.py test
 
-# Target to build packages for a lot of different Linux distributions
-build-all-linux: regenerate-icons compile-translations activate-venv
-	./src/scripts/build_linux_all.sh
+dev:
+	@$(PYTHON) tasks.py dev
 
-# Target to create an AppImage for Linux
-build-linux-appimage: regenerate-icons compile-translations activate-venv
-	.venv/bin/briefcase build linux appimage
+package: venv
+	@$(PYTHON) tasks.py package
 
-build-linux-flatpak: regenerate-icons compile-translations activate-venv
-	.venv/bin/briefcase package linux flatpak
+# Windows-only: self-contained portable .zip with a data/ folder inside
+package-portable: venv
+	@$(PYTHON) tasks.py package-portable
 
-# Target to build the MacOS app
-build-macos-app: regenerate-icons compile-translations activate-venv
-	.venv/bin/briefcase build macos app
+build-all-linux: venv
+	@$(PYTHON) tasks.py build-all-linux
 
+build-linux-appimage: venv
+	@$(PYTHON) tasks.py build --platform linux --format appimage
+
+build-linux-flatpak: venv
+	@$(PYTHON) tasks.py package --platform linux --format flatpak
+
+build-macos-app: venv
+	@$(PYTHON) tasks.py build --platform macOS --format app

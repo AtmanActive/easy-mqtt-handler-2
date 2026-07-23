@@ -1,5 +1,20 @@
 # Building Easy MQTT Handler
 
+## The task runner
+
+All build steps are driven by `tasks.py` in the repo root, which runs the same way on
+Windows, Linux and macOS:
+
+		python tasks.py --help
+		python tasks.py venv
+		python tasks.py test
+		python tasks.py package
+
+The `make` targets described below are thin wrappers around it, so on Linux and macOS
+you can keep using `make`. On Windows, call `tasks.py` directly.
+
+***
+
 ## Building on Linux
 
 ### Dependencies
@@ -26,7 +41,7 @@ Once **briefcase** finished packaging you can find the installer's **.AppImage**
 You can try to build packages for a lot of different Linux distributions at the same time. It's not guaranteed to work,
 and you will definitely need some more dependencies (especially podman or docker). Right now the `briefcase` build
 system is configured to build for Arch Linux (latest) & Debian 11, 12 & Ubuntu 18.04, 20.04, 22.04 & Fedora 36, 37, 38 &
-AlmaLinux 7, 8, 9. Check the `./src/scripts/build_linux_all.sh` and consult the `briefcase` documentation if
+AlmaLinux 7, 8, 9. Check the `LINUX_TARGETS` list in `tasks.py` and consult the `briefcase` documentation if
 you want to build for other targets.
 
 You can simply execute `make build-all-linux` in the repos root directory to call the briefcase build system and 
@@ -50,8 +65,12 @@ https://www.python.org/downloads/ (select the amd64 installer)
 
 Follow all the steps of **Packaging**, but instead of executing **briefcase package** use **briefcase build**, e.g.:
 
-		C:\[..]> py -m venv .venv
-		C:\[..]> .venv\Scripts\activate.bat
-		(.venv) C:\[..]> briefcase build
+		C:\[..]> python tasks.py venv
+		C:\[..]> python tasks.py build
 
-Once briefcase finished you should find your fresh build in the **build** subdirectory
+Once briefcase finished you should find your fresh build in the **build** subdirectory.
+
+If you want to build the German translations into the app you also need GNU gettext on
+your `PATH` (`winget install mlocati.GetText`). `tasks.py build` compiles the `.po` files
+automatically when it finds gettext; without it the app still builds, but falls back to
+the untranslated source strings.

@@ -14,10 +14,10 @@ from easy_mqtt_handler.util.Tools import Utils
 # the default icons are all part of the "Humanity" Icon set (see license-humanity.txt)
 APP_ICON = Utils.resource_path("assets/app-icon/app-icon.svg")
 
-BUTTON_ADD = Utils.resource_path("assets/button/add.svg")
-BUTTON_CLEAR = Utils.resource_path("assets/button/clear.svg")
-BUTTON_COPY = Utils.resource_path("assets/button/copy.svg")
-BUTTON_REMOVE = Utils.resource_path("assets/button/remove.svg")
+BUTTON_ADD = Utils.resource_path("assets/buttons/add.svg")
+BUTTON_CLEAR = Utils.resource_path("assets/buttons/clear.svg")
+BUTTON_COPY = Utils.resource_path("assets/buttons/copy.svg")
+BUTTON_REMOVE = Utils.resource_path("assets/buttons/remove.svg")
 
 TOOLBAR_ABOUT = Utils.resource_path("assets/toolbar/about.svg")
 TOOLBAR_CONNECT = Utils.resource_path("assets/toolbar/connect.svg")

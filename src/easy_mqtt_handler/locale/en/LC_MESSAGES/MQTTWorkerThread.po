@@ -108,3 +108,39 @@ msgstr "Disconnected from Broker."
 #: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:263
 msgid "Reconnecting to Broker."
 msgstr "Reconnecting to Broker."
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:101
+msgid "Sending {0} startup message(s)."
+msgstr "Sending {0} startup message(s)."
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:111
+msgid "Couldn't send startup message to topic \"{0}\" (error {1})."
+msgstr "Couldn't send startup message to topic \"{0}\" (error {1})."
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:116
+msgid "Sent startup message \"{0}\" to topic \"{1}\"."
+msgstr "Sent startup message \"{0}\" to topic \"{1}\"."
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:120
+msgid "Couldn't send startup message to topic \"{0}\": {1}"
+msgstr "Couldn't send startup message to topic \"{0}\": {1}"
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:123
+msgid "All startup messages sent."
+msgstr "All startup messages sent."
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:135
+msgid "Skipping Home Assistant discovery for topic \"{0}\": {1}"
+msgstr "Skipping Home Assistant discovery for topic \"{0}\": {1}"
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:147
+msgid "Couldn't send Home Assistant discovery to topic \"{0}\" (error {1})."
+msgstr "Couldn't send Home Assistant discovery to topic \"{0}\" (error {1})."
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:152
+msgid "Announced Home Assistant entity via topic \"{0}\"."
+msgstr "Announced Home Assistant entity via topic \"{0}\"."
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:155
+msgid "Couldn't send Home Assistant discovery to topic \"{0}\": {1}"
+msgstr "Couldn't send Home Assistant discovery to topic \"{0}\": {1}"

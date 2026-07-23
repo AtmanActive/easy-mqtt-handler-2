@@ -23,11 +23,13 @@ This repository is a fork and continuation of the awesome [Easy MQTT Handler](ht
 - [Using this tool](#using-this-tool)
   - [Connection tab](#connection-tab)
   - [Payload Handlers tab](#payload-handlers-tab)
+  - [Send on Startup tab](#send-on-startup-tab)
   - [Logs tab](#logs-tab)
   - [The Tooblar](#the-toolbar)
 - [Configuration files](#configuration-files)
   - [Linux / MacOS](#linux--macos)
   - [Windows](#windows)
+  - [Portable mode](#portable-mode)
 - [Command line arguments](#command-line-arguments)
 - [Integrating with Home Assistant](#integrating-with-home-assistant)
   - [Creating your first automation wit Easy MQTT Handler](#creating-your-first-automation-wit-easy-mqtt-handler)
@@ -85,6 +87,76 @@ will be replaced with `test1 test2` once the above MQTT payload is received.
 Should you have, e.g. `$3` defined in the **Command line arguments**, but the MQTT payload does not contain `param3`, `
 $3` will be removed from the command line arguments automatically, in order to not be passed to the command you want to run.
 
+## Send on Startup tab
+
+While the [Payload Handlers tab](#payload-handlers-tab) defines what happens when a message *arrives*, this tab
+defines messages the tool *sends* by itself. Everything listed here is published as soon as a connection to the
+broker has been established, just before the tool starts listening.
+
+Leave the tab empty and nothing is sent, which is exactly how the tool behaved before this feature existed.
+
+The typical use is letting each of your machines announce or configure its own entities in Home Assistant
+whenever it comes online, so a desktop and a laptop can each set up what belongs to them.
+
+Every row is one message:
+
+| Column | Meaning |
+|---|---|
+| **Topic** | The MQTT topic to publish to. This is an **absolute** topic and is *not* prefixed with the topic from the Connection tab, because you are usually addressing some other device's entity. |
+| **Payload** | What to send. Plain text or JSON, whatever the receiving side expects. |
+| **QoS** | Quality of Service, `0`, `1` or `2`. Leave it at `0` if you have no reason to change it. |
+| **Retain** | Ask the broker to remember this message and deliver it to anyone subscribing later. Home Assistant usually wants this on for configuration messages. |
+| **HA Entity** | Which kind of Home Assistant entity to create. Defaults to `sensor`. Optional, see below. |
+| **HA ID** | The unique id of the entity to create. Filling this in is what switches auto discovery on. Optional. |
+| **HA Name** | The friendly name shown in Home Assistant. Optional, defaults to the HA ID. |
+
+Use **Add Message** and **Remove Message** to manage the list, then save with the toolbar's save button, just as
+on the Payload Handlers tab. Rows without a topic are ignored, so a half-finished row is never sent.
+
+### Creating Home Assistant entities automatically
+
+Normally, getting a value from this tool into Home Assistant means editing YAML and restarting it. MQTT auto
+discovery avoids that: if you publish a small JSON description of an entity to a special topic, Home Assistant
+creates the entity immediately.
+
+This tool can do that for you. **Fill in HA ID on a row** and, just before sending that row's message, it also
+publishes a discovery message:
+
+	topic:   homeassistant/<HA Entity>/<HA ID>/config
+	payload: {"name": "<HA Name>", "state_topic": "<Topic>", "unique_id": "<HA ID>"}
+
+So a row with Topic `workstation/dev-box/cpu-temp`, HA Entity `sensor`, HA ID `dev_box_cpu_temp` and
+HA Name `Dev Box CPU Temperature` gives you the entity `sensor.dev_box_cpu_temp` in Home Assistant, already
+pointed at the right topic. This is exactly what makes the "different desktops configure their own entities"
+idea work: each machine announces what belongs to it as it comes online.
+
+**Leave HA ID empty and nothing changes** — the row is published just like before. That is also true of every
+configuration made before this feature existed.
+
+A few details worth knowing:
+
+* The discovery message is **always** sent retained, whatever the row's own Retain setting says. Home Assistant
+  forgets entities whose discovery message was not retained, so this is not optional.
+* Tick **Retain** on the row itself as well if you want the value to survive. Home Assistant subscribes to the
+  state topic a moment after it processes the discovery message, so an unretained value sent immediately
+  afterwards can be missed.
+* **HA Entity** and **HA ID** both become part of a topic, so they may only contain letters, digits, underscores
+  and hyphens. A row that breaks this rule is reported in the [Logs tab](#logs-tab) and skipped for discovery
+  only — its own message is still sent.
+* **Removing a row does not remove the entity** from Home Assistant, because the retained discovery message is
+  still sitting on the broker. To delete one, add a row that publishes an *empty* Payload with **Retain** ticked
+  to that same `homeassistant/<HA Entity>/<HA ID>/config` topic, leave HA ID blank on it, and start the tool
+  once. Then delete that row too.
+
+These messages are stored separately from everything else, in `default-startup-messages.json`, next to the other
+configuration files.
+
+One thing worth knowing: the messages are sent on **every** successful connection, not only the first one after
+launching. If the connection drops and is re-established, or you press Reconnect, they are sent again. That is
+usually what you want, because a broker restart loses any retained state, but it does mean you should avoid
+putting anything in here that toggles rather than sets a value. Every message sent is recorded in the
+[Logs tab](#logs-tab).
+
 ## Logs tab
 
 ![Logs](docs/assets/logs-tab.png)
@@ -125,10 +197,13 @@ Just to make sure you never lose anything you've reconfigured.
 
 You should be able to locate the standard configuration files in your home directory. 
 Here's the path you should be able to copy & paste: `~/.config/easy-mqtt-handler/` \
-Inside you will find two files, usually: `default-settings.json` and `default-payloads.json`.
+Inside you will find up to three files: `default-settings.json`, `default-payloads.json` and
+`default-startup-messages.json`.
 
 `default-settings.json` contains the connection configuration parameters. \
-`default-payloads.json` contains all the payloads you defined.
+`default-payloads.json` contains all the payloads you defined. \
+`default-startup-messages.json` contains the messages from the [Send on Startup tab](#send-on-startup-tab).
+It is only written once you have added something there.
 
 It's possible to use other configuration files, in fact you can have as many as you want to. The trick is to
 use [Command line arguments](#command-line-arguments) to launch Easy MQTT Handler.
@@ -140,11 +215,56 @@ On Windows the configuration files are exactly the same. However, you will find 
 Press `[Win]`-key + `[R]` and type in `%appdata%\\easy-mqtt-handler\`, then click `[Ok]` and you should see the
 configuration files.
 
+## Portable mode
+
+Easy MQTT Handler can keep its configuration next to itself instead of in your home directory, which is
+handy for running it from a USB stick or a synced folder.
+
+### The ready-made portable download (Windows)
+
+The simplest route on Windows is the portable release, named like
+`Easy MQTT Handler 2-2.0.2-Portable.zip`. It already has everything set up:
+
+1. Unzip it wherever you like, including a USB stick.
+2. Open the folder it creates and run `Easy MQTT Handler 2.exe`.
+
+That's it. The `data` folder is already inside, so the program is self-contained from the first start
+and writes nothing outside its own folder. No installation and no administrator rights are needed.
+
+### Turning any copy into a portable one
+
+To switch it on manually, create a folder named `data` **next to the program's executable**:
+
+```
+Easy MQTT Handler 2.exe
+data\
+```
+
+That's all there is to it. On the next start the program notices the folder and reads and writes
+`default-settings.json`, `default-payloads.json`, `default-startup-messages.json` and its temporary
+certificate file there. Nothing is
+stored in your home directory, and the program behaves the same no matter which directory you launch
+it from.
+
+Remove the `data` folder and the program goes back to the standard per-user location described above.
+Your configuration stays in the `data` folder, so you can switch back and forth by moving the files.
+
+A few details worth knowing:
+
+* The `data` folder is never created for you. Its presence is what turns the feature on, so creating it
+  automatically would quietly opt you in for good.
+* Only a real folder counts. A file that merely happens to be named `data` is ignored.
+* [Command line arguments](#command-line-arguments) still win. If you pass `--mqtt-configuration-file`
+  or `--payload-configuration-file`, those files are used regardless of portable mode.
+* Make sure the program can write to the folder. If you installed into `C:\Program Files\`, Windows will
+  not normally let it write there; unpack the program somewhere else for portable use.
+
 # Command line arguments
 
 ```
 usage: __main__.py [-h] [-mqtt-conf MQTT_CONFIGURATION_FILE]
                    [-payload-conf PAYLOAD_CONFIGURATION_FILE]
+                   [-startup-conf STARTUP_CONFIGURATION_FILE]
 
 Easy MQTT Handler
 
@@ -152,6 +272,7 @@ options:
   -h, --help            show this help message and exit
   -mqtt-conf MQTT_CONFIGURATION_FILE, --mqtt-configuration-file MQTT_CONFIGURATION_FILE
   -payload-conf PAYLOAD_CONFIGURATION_FILE, --payload-configuration-file PAYLOAD_CONFIGURATION_FILE
+  -startup-conf STARTUP_CONFIGURATION_FILE, --startup-configuration-file STARTUP_CONFIGURATION_FILE
 ```
 
 # Integrating with Home Assistant

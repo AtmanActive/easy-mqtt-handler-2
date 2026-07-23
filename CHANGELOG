@@ -1,3 +1,155 @@
+# Version 2.0.5
+[Feature] The About Program window now actually introduces the program. Its first tab shows the
+          application icon, the program name, the version, a clickable link to the project and a short
+          description of what the tool is for. The GNU GPL text that used to fill this tab moved to a
+          new tab of its own, named "License", which sits directly after it and ahead of the
+          third party licenses.
+[Feature] The name, version and URL shown there are read from the packaging metadata at runtime, with
+          pyproject.toml as a fallback when running from a source checkout. Nothing is duplicated in
+          the source, so the About window cannot drift out of step with what was actually built. A
+          test asserts the reported version matches pyproject.toml.
+
+# Version 2.0.4
+[Feature] The "Send on Startup" tab can now create Home Assistant entities automatically, using MQTT
+          auto discovery. Three columns were added: HA Entity, HA ID and HA Name. When HA ID is filled
+          in, a retained discovery message is published to homeassistant/<HA Entity>/<HA ID>/config
+          carrying {"name": <HA Name>, "state_topic": <Topic>, "unique_id": <HA ID>}, immediately
+          before the row's own message. Home Assistant creates the entity on the spot, with no YAML
+          and no restart.
+[Feature] HA Entity defaults to "sensor" and is an editable drop down offering the most common
+          components, so anything Home Assistant supports can still be typed in. HA Name falls back to
+          the HA ID when left blank, so an entity is never left unnamed.
+[Feature] Rows with an empty HA ID are published exactly as before, with no discovery message. This is
+          also what happens to every configuration written by an earlier version, so upgrading changes
+          nothing until the new columns are filled in.
+
+[Note] Discovery messages are always sent retained, regardless of the row's own Retain setting,
+       because Home Assistant forgets entities whose discovery message is not retained.
+
+[Note] Removing a row stops the entity being announced, but does not remove it from Home Assistant,
+       since the retained discovery message stays on the broker. To delete an entity, add a row that
+       publishes an empty payload with Retain ticked to that same .../config topic, leaving HA ID
+       blank, and start the program once.
+
+[Fix] HA Entity and HA ID are validated before use. Both become topic levels, so a value containing a
+      slash, a wildcard or a space would produce a broken discovery topic. Such a row is reported in
+      the Logs tab and skipped for discovery only; its own message is still published.
+
+# Version 2.0.3
+[Feature] New "Send on Startup" tab. It lists MQTT messages that are published once a connection to
+          the broker has been established, before the program starts listening. Each row has a Topic,
+          a Payload, a QoS level and a Retain flag. Leave the tab empty and the program behaves
+          exactly as before. The intended use is letting each desktop configure its own entities in
+          Home Assistant whenever it comes online.
+[Feature] Startup messages are stored in their own configuration file, default-startup-messages.json,
+          next to the existing settings and payload files, and honour portable mode. A matching
+          --startup-configuration-file command line option was added for symmetry with the other two.
+[Feature] Topics on this tab are absolute. They are deliberately not prefixed with the topic from the
+          Connection tab, because the point is to address other devices' entities rather than the
+          program's own subscription tree.
+
+[Note] The messages are sent on every successful connection, not only on the very first one. This
+       means they are re-sent after a reconnect, which is what you want when a broker restart has
+       lost the retained state that Home Assistant relies on. Every send is written to the Logs tab.
+
+[Fix] The main window now opens wide enough to show all of its tabs. The default width is a quarter
+      of the screen, which a fourth tab no longer fits into, so the tab bar collapsed into scroll
+      arrows. The window asks the tab bar how much room it needs, which also covers longer labels in
+      translated builds.
+
+[Fix] Tab positions are no longer hardcoded as indices. Jumping to the Logs or Connection tab, and
+      marking a tab as having unsaved changes, now look the tab up by widget. The old code addressed
+      tabs by number and would have silently acted on the wrong tab once a fourth one was inserted.
+[Feature] New Windows build artifact: a portable .zip, built with "python tasks.py package-portable"
+          (or "make package-portable") and written to dist/ alongside the .msi. It unpacks to a single
+          folder containing the executable and a ready-made "data" folder, so unzipping it anywhere and
+          running the .exe gives a completely self-contained install that touches nothing outside its
+          own folder. The data folder ships with a short readme in it, both to explain itself and so
+          that archive tools which discard empty folders cannot break portable mode on extraction.
+[Feature] Automatic portable mode. On startup the app looks for a directory named "data" next to the
+          executable. If one is there, every runtime file (settings, payload handlers and the
+          temporary certificate .pem) is read from and written to that directory, exactly as if
+          --mqtt-configuration-file and --payload-configuration-file had been passed. If there is no
+          such directory the app behaves as before and uses the per-user location
+          (%appdata%\easy-mqtt-handler on Windows, ~/.config/easy-mqtt-handler elsewhere).
+          The directory is never created automatically: its presence is the opt-in, so creating it
+          would silently and permanently switch the user over. A plain file named "data" is ignored.
+          Explicit command line options still take precedence over portable mode.
+
+[Fix] Configuration files are now read as UTF-8 and tolerate a byte order mark, and are written as
+      UTF-8 rather than in the system's local codepage. Portable mode puts these files right next to
+      the executable where they are much more likely to be hand-edited, and several Windows editors
+      add a BOM when saving, which previously made the file fail to load.
+
+[Fix] The main window is shown on first run again when portable mode is active. First run was
+      previously inferred from having just created the config directory, which never happens in
+      portable mode because the "data" directory must already exist to be detected. It is now
+      inferred from the absence of a settings file, which is correct in both modes.
+
+# Version 2.0.1
+[Feature] The GUI now follows the operating system's light/dark preference on Windows, macOS and
+          Linux. Qt5 does not do this by itself on Windows, which is why the app stayed light there
+          even with the system set to dark; on Linux the platform theme plugin already handled it.
+          The app only overrides the palette when the platform has not already produced one matching
+          the system preference, so the native look is preserved wherever it was already correct.
+[Feature] The colour scheme is re-checked while the app runs, so toggling the OS setting updates the
+          window without a restart. Qt5 emits no signal for this on Windows, so it is polled.
+[Feature] On Windows the native title bar is switched to its dark variant via DWM, which Qt5 does not
+          do on its own. Note that Windows ignores this for the active window when "Show accent colour
+          on title bars and window borders" is enabled in Personalisation, in which case the accent
+          colour wins; that is Windows' own precedence rule, not a limitation of the app.
+[Feature] The theme can be forced with the EASY_MQTT_HANDLER_THEME environment variable, set to
+          either "dark" or "light", which overrides detection. Useful for testing and for desktops
+          whose preference cannot be detected.
+
+[Fix] Corrected the paths of the four BUTTON_* icon constants, which pointed at assets/button/
+      instead of assets/buttons/. These constants are currently unused, so nothing was visibly
+      broken; a test now verifies that every icon path resolves to a real file.
+
+# Version 2.0.0
+First release of Easy MQTT Handler 2, a fork and continuation of Easy MQTT Handler by A. Zeil.
+No user-facing behaviour was changed in this release; the work was on project identity,
+the build system, tests and cross-platform support.
+
+[Chore] Rebranded as "Easy MQTT Handler 2": new bundle identifier (com.atmanactive), project URL and
+        maintainer. The bundle ID change means this fork installs alongside the original instead of
+        colliding with it. Original authorship and the GPLv3+ licence are unchanged.
+[Chore] Verified the app builds, packages and runs on Python 3.14; no source changes were required.
+[Chore] Declared the licence as license.file per PEP 621, silencing a briefcase deprecation warning.
+[Chore] Added .briefcase/, logs/, dist-info/ and .pytest_cache/ to .gitignore; these build byproducts
+        were previously left untracked in the working tree.
+[Chore] Pointed the license-load error message at this fork's repository instead of upstream's.
+
+[Feature] Replaced the Makefile and the four src/scripts/*.sh helpers with tasks.py, a single task
+          runner using only the standard library that behaves identically on Windows, Linux and macOS.
+          Run "python tasks.py --help" for the task list. The Makefile is kept as a thin wrapper so
+          existing "make" targets, including activate-venv, still work on Linux and macOS.
+[Feature] Translations can now be generated and compiled on Windows. Template generation moved from
+          pygettext3 to xgettext, and source references in .pot files use posix separators so
+          regenerating them on different platforms no longer churns the diff.
+[Feature] Added a test suite (tests/) with 14 tests covering the Utils helpers and the JSON-backed
+          settings and payload stores. Runs via "pytest", "python tasks.py test", or
+          "briefcase dev --test".
+
+[Fix] The build no longer ships untranslated. Compiled .mo files are generated artifacts kept out of
+      git, and briefcase copies app sources only when the bundle is created, so a build from a fresh
+      clone silently fell back to the English source strings. tasks.py now compiles missing
+      translations before building and passes --update so the result is copied into the bundle.
+[Fix] translation-compile-mos.sh tested msgfmt's standard output rather than its exit status, and an
+      empty string compares equal to zero in bash, so it reported success even when compilation
+      failed. The replacement checks exit codes on every external command.
+[Fix] Closed three leaked file handles: MQTTSettings.load_settings, MQTTPayloads.load_payload_data
+      and Utils.load_license_file each opened a file without closing it. ResourceWarnings are now
+      fatal in the test suite to keep them from returning.
+[Fix] Icon regeneration no longer misidentifies the Windows FAT-to-NTFS utility (System32\convert.exe)
+      as ImageMagick; the candidate binary is verified before use.
+
+[Docs] Documented tasks.py as the entry point for builds, tests and translations across BUILDING.md,
+       I18N.md, ICONS.md and REPO-STRUCTURE.md, and removed references to the deleted shell scripts.
+       I18N.md no longer warns that translating only works on Linux.
+[Docs] Documented the GNU gettext requirement (xgettext and msgfmt) with install commands per platform,
+       and noted that the macOS .icns step needs icnsutils, which is packaged for Linux only.
+
 # Version 0.1.2
 [Chore] Updated depencies and build tooling
 [Feature] Implemented dynamic parameters in MQTT payloads

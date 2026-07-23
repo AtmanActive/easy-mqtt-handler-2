@@ -44,8 +44,10 @@ class MQTTPayloads(object):
 
         if os.path.exists(self._payload_file):
             try:
-                pf = open(self._payload_file, 'r')
-                return json.load(pf)
+                # utf-8-sig so a file hand-edited in an editor that adds a BOM
+                # still loads; it reads plain UTF-8 unchanged
+                with open(self._payload_file, 'r', encoding='utf-8-sig') as pf:
+                    return json.load(pf)
             # TODO: implement better exception handling
             except IOError:
                 # self.add_log_line("Payload File couldn't be loaded.")
@@ -57,7 +59,7 @@ class MQTTPayloads(object):
     def save_payload_data(self):
         # create a JSON object from the data and save it to the payload config file
         try:
-            with open(self._payload_file, 'w') as pf:
+            with open(self._payload_file, 'w', encoding='utf-8') as pf:
                 json.dump(self._payload_data, pf)
                 pf.close()
 

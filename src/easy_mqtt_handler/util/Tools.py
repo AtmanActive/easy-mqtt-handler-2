@@ -18,11 +18,63 @@ from pathlib import Path
 
 
 class Utils:
+    LICENSE_LOAD_ERROR = "License File couldn't be loaded, please check our Git Repository: " \
+                         "https://github.com/AtmanActive/easy-mqtt-handler-2/"
+
+    # a directory of this name sitting next to the executable turns on portable mode
+    PORTABLE_DATA_DIRNAME = "data"
+
+    DEFAULT_SETTINGS_FILENAME = "default-settings.json"
+    DEFAULT_PAYLOADS_FILENAME = "default-payloads.json"
+    DEFAULT_STARTUP_FILENAME = "default-startup-messages.json"
+
     @staticmethod
-    def get_config_path():
+    def get_executable_directory():
+        # for a packaged app this is the folder holding the .exe; when running from
+        # source it is wherever the interpreter lives, which will not normally have
+        # a "data" directory beside it, so portable mode simply stays off
+        return os.path.dirname(os.path.abspath(sys.executable))
+
+    @classmethod
+    def get_portable_data_path(cls):
+        """Return the adjacent "data" directory, or None when there isn't one.
+
+        Its presence is what enables portable mode: we never create it, because
+        creating it would permanently opt the user in.
+        """
+        candidate = os.path.join(cls.get_executable_directory(), cls.PORTABLE_DATA_DIRNAME)
+        if os.path.isdir(candidate):
+            # callers concatenate filenames directly, so keep the trailing separator
+            return candidate + os.sep
+        return None
+
+    @classmethod
+    def is_portable(cls):
+        return cls.get_portable_data_path() is not None
+
+    @classmethod
+    def get_config_path(cls):
+        # a "data" folder next to the executable wins, so the app can be carried
+        # around on a stick together with its configuration
+        portable_path = cls.get_portable_data_path()
+        if portable_path is not None:
+            return portable_path
+
         # on windows, we want to store the configuration in %appdata%\easy-mqtt-handler, while
         # on *nix-based OSes we want to store the configuration in ~/.config/easy-mqtt-handler
         return os.path.expandvars("%appdata%\\easy-mqtt-handler\\") if os.name == "nt" else os.path.expanduser("~/.config/easy-mqtt-handler/")
+
+    @classmethod
+    def get_settings_file(cls):
+        return cls.get_config_path() + cls.DEFAULT_SETTINGS_FILENAME
+
+    @classmethod
+    def get_payload_file(cls):
+        return cls.get_config_path() + cls.DEFAULT_PAYLOADS_FILENAME
+
+    @classmethod
+    def get_startup_file(cls):
+        return cls.get_config_path() + cls.DEFAULT_STARTUP_FILENAME
 
     @staticmethod
     def create_path_if_not_exists(path):
@@ -40,15 +92,13 @@ class Utils:
     def load_license_file(license_file):
         if os.path.exists(license_file):
             try:
-                sf = open(license_file, 'r')
-                return sf.read()
+                with open(license_file, 'r') as sf:
+                    return sf.read()
             # TODO: implement better exception handling
             except IOError:
-                return "License File couldn't be loaded, please check our Git Repository: " \
-                       "https://github.com/andzeil/easy-mqtt-handler/"
+                return Utils.LICENSE_LOAD_ERROR
         else:
-            return "License File couldn't be loaded, please check our Git Repository: " \
-                   "https://github.com/andzeil/easy-mqtt-handler/"
+            return Utils.LICENSE_LOAD_ERROR
 
     @staticmethod
     def resource_path(relative_path):

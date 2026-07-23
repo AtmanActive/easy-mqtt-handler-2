@@ -29,6 +29,10 @@ msgid "Payload Handlers"
 msgstr "Payload Handlers"
 
 #: ./src/easy_mqtt_handler/qt/MainWindow.py:89
+msgid "Send on Startup"
+msgstr "Send on Startup"
+
+#: ./src/easy_mqtt_handler/qt/MainWindow.py:90
 msgid "Logs"
 msgstr "Logs"
 

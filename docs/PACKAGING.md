@@ -38,11 +38,28 @@ https://www.python.org/downloads/ (select the amd64 installer)
 
 Via **cmd.exe** or **powershell.exe**, in the folder of Easy MQTT Handler's source code, execute the following commands:
 
-		C:\[..]> py -m venv .venv
-		C:\[..]> .venv\Scripts\activate.bat
-		(.venv) C:\[..]> briefcase package
+		C:\[..]> python tasks.py venv
+		C:\[..]> python tasks.py package
 
 Once **briefcase** finished packaging you can find the installer's **.msi** file in the **dist** subdirectory
+
+### Packaging the portable version
+
+Windows also has a second artifact: a self-contained portable **.zip**. Build it with:
+
+		C:\[..]> python tasks.py package-portable
+
+This produces `dist\Easy MQTT Handler 2-<version>-Portable.zip`, which unpacks to a single folder
+holding the executable and a ready-made `data` folder. Because that folder is present, the unpacked
+copy runs in [portable mode](../README.md#portable-mode) straight away and keeps its configuration
+beside the executable instead of in the user's profile.
+
+The `data` folder in the zip contains a short `README.txt`. That is deliberate: it documents the
+folder for users, and it stops archive tools that discard empty directories from silently breaking
+portable mode when the zip is extracted.
+
+Note that the task rebuilds the app first and always excludes any `data` folder left over from local
+testing, so a stray test configuration can never end up in a release zip.
 
 ***
 
