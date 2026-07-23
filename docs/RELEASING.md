@@ -57,6 +57,11 @@ distribution it was built for. That is why its filename keeps the vendor and cod
 targets whatever Ubuntu the GitHub runner image happens to be on. The AppImage, Flatpak and portable
 archive all run anywhere. Its dependencies are listed as `system_runtime_requires` in `pyproject.toml`.
 
+That also explains why its job builds itself a separate environment. briefcase refuses to build a
+system package unless the Python running it is the same one the package will depend on, and it
+compares the full version string, so the newer Python the other jobs use is rejected. The job
+therefore creates a `.venv` from `/usr/bin/python3` and lets `tasks.py` pick it up.
+
 Its filename is also rewritten more heavily than the others. Debian's convention,
 `name_version-revision~vendor-codename_arch.deb`, starts with the lower case package name and uses
 underscores, which sorted it away from every other download. `dpkg` reads the package metadata rather

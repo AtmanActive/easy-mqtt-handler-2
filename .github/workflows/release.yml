@@ -120,12 +120,20 @@ jobs:
           flatpak remote-add --if-not-exists --user \
             flathub https://flathub.org/repo/flathub.flatpakrepo
 
-      # briefcase checks for these before it will build a system package, and
-      # builds against the distribution's own python rather than the one
-      # set up above
-      - name: Install the Debian packaging tooling
+      # A .deb depends on the distribution's own python, so briefcase refuses to
+      # build one unless it is itself run by that python. The version set up
+      # above is deliberately newer, so give this job an environment built from
+      # /usr/bin/python3 instead. tasks.py prefers a project .venv when there is
+      # one, so the packaging step below picks this up on its own.
+      - name: Prepare the system Python environment
         if: matrix.briefcase_format == 'system'
-        run: sudo apt-get install -y python3-dev python3-pip build-essential
+        run: |
+          sudo apt-get install -y python3-dev python3-venv build-essential
+          /usr/bin/python3 -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt
+          echo "Briefcase will run on: $(.venv/bin/python --version)"
+          echo "System python3 is    : $(/usr/bin/python3 --version)"
 
       - name: Install the build requirements
         run: |
