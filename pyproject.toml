@@ -68,7 +68,8 @@ supported = false
 
 [tool.pytest.ini_options]
 # the app lives under src/, so put it on the path instead of requiring an install
-pythonpath = ["src"]
+# "." makes the tasks.py build helper importable by its tests
+pythonpath = ["src", "."]
 testpaths = ["tests"]
 # unclosed config/license files were a real leak here once; keep them fatal
 filterwarnings = ["error::ResourceWarning"]

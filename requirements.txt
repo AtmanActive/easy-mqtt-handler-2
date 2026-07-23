@@ -1,4 +1,9 @@
 briefcase~=0.3.19
+# build-time only, not part of the packaged app, whose dependencies live in
+# pyproject.toml. babel compiles .po files where GNU gettext is not installed,
+# which keeps the build working on a bare CI runner.
+babel~=2.17
+pytest~=9.1
 paho-mqtt~=2.1.0
 PyQt5~=5.15.11
 pyOpenSSL~=24.2.1

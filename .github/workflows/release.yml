@@ -1,0 +1,192 @@
+name: Build and release
+
+# This workflow never starts by itself. There is deliberately no push, pull
+# request or tag trigger: it only runs when you press "Run workflow" on the
+# Actions tab, so building a release is always a decision you make.
+on:
+  workflow_dispatch:
+    inputs:
+      draft:
+        description: 'Create the release as a draft so the files can be checked before publishing'
+        type: boolean
+        default: true
+      prerelease:
+        description: 'Mark the release as a pre-release'
+        type: boolean
+        default: false
+
+# needed to create the release and upload the built files to it
+permissions:
+  contents: write
+
+env:
+  PYTHON_VERSION: '3.14'
+  # the tests build Qt objects, which needs a platform plugin even though no
+  # window is ever shown. without this they cannot run on a headless runner.
+  QT_QPA_PLATFORM: offscreen
+
+jobs:
+  metadata:
+    name: Read project version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+      tag: ${{ steps.read.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # pyproject.toml is the single place the version is defined; everything
+      # downstream, including the artifact names, follows from it
+      - name: Read the version from pyproject.toml
+        id: read
+        shell: bash
+        run: |
+          version="$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['tool']['briefcase']['version'])")"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${version}" >> "$GITHUB_OUTPUT"
+          echo "Releasing version ${version} as tag v${version}"
+
+  build:
+    name: Build for ${{ matrix.label }}
+    needs: metadata
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # one platform failing should not hide whether the other two worked
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: Windows
+            artifact: windows
+          - os: ubuntu-latest
+            label: Linux
+            artifact: linux
+          # macos-latest is Apple Silicon, so this produces an arm64 build.
+          # PyQt5 5.15.11 publishes wheels for both architectures, but only for
+          # macOS 11 and newer.
+          - os: macos-latest
+            label: macOS
+            artifact: macos
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # PyQt5 cannot even be imported without these, and the tests import it
+      - name: Install the Qt runtime libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgl1 libegl1 libxkbcommon-x11-0 libdbus-1-3 \
+            libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
+            libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xfixes0
+
+      - name: Install the build requirements
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run the test suite
+        run: python -m pytest
+
+      # .mo files are generated and are not committed, so a fresh checkout has
+      # none. tasks.py compiles them with babel, which avoids having to install
+      # GNU gettext three different ways on three different runners.
+      - name: Compile the translations
+        run: python tasks.py compile-translations
+
+      - name: Package for Windows
+        if: runner.os == 'Windows'
+        run: |
+          python tasks.py package --platform windows
+          python tasks.py package-portable
+
+      # an AppImage runs on any reasonably modern distribution, which suits a
+      # downloadable release better than a distribution specific package
+      - name: Package for Linux
+        if: runner.os == 'Linux'
+        run: python tasks.py package --platform linux --format appimage
+
+      - name: Package for macOS
+        if: runner.os == 'macOS'
+        run: python tasks.py package --platform macOS --format app
+
+      - name: Show what was built
+        shell: bash
+        run: ls -lh dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/*
+          # an empty dist means the packaging step quietly produced nothing
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Publish the GitHub release
+    needs: [metadata, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      # the artifacts arrive in one directory per platform; flatten them so
+      # they can all be attached to the release in one go
+      - name: Collect the built files
+        shell: bash
+        run: |
+          mkdir -p release
+          find artifacts -type f -exec cp {} release/ \;
+          echo "Files to publish:"
+          ls -lh release/
+
+      - name: Prepare the release notes
+        shell: bash
+        run: |
+          python tasks.py release-notes > release-notes.md
+          echo "Release notes:"
+          cat release-notes.md
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.metadata.outputs.tag }}
+          VERSION: ${{ needs.metadata.outputs.version }}
+          DRAFT: ${{ inputs.draft }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        shell: bash
+        run: |
+          flags=()
+          if [ "$DRAFT" = "true" ]; then flags+=(--draft); fi
+          if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
+
+          # re-running for a version that already has a release should add the
+          # files to it rather than failing outright
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG already exists, uploading the files to it"
+            gh release upload "$TAG" release/* --clobber
+          else
+            gh release create "$TAG" release/* \
+              --title "Easy MQTT Handler 2 $VERSION" \
+              --notes-file release-notes.md \
+              --target "$GITHUB_SHA" \
+              "${flags[@]}"
+          fi
+
+          gh release view "$TAG"

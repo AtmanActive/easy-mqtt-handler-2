@@ -1,0 +1,63 @@
+# Making a release
+
+Releases are built by GitHub Actions, on GitHub's own Windows, Linux and macOS machines, so you do not
+need any of those three operating systems yourself.
+
+**The workflow never runs on its own.** It has no push, pull request or tag trigger. It only starts when
+you ask it to, so an ordinary commit never builds or publishes anything.
+
+## Before you start
+
+1. Set the new version in `pyproject.toml`. That file is the single place the version is defined;
+   everything else, including the artifact filenames and the About window, reads it from there.
+2. Add a matching `# Version <version>` section to the `CHANGELOG`. The workflow turns that section into
+   the release notes, and the test suite fails if it is missing, so you cannot forget it.
+3. Commit and push both.
+
+## Running it
+
+1. Go to the **Actions** tab of the repository.
+2. Pick **Build and release** in the list on the left.
+3. Press **Run workflow**, and choose:
+   * **Create the release as a draft** — on by default. The release is prepared but not visible to anyone
+     else, so you can download the files and try them before publishing. Recommended.
+   * **Mark the release as a pre-release** — off by default.
+4. Press the green **Run workflow** button.
+
+The three platforms build in parallel. Expect it to take a while, mostly waiting for the Linux AppImage.
+
+When it finishes, the release is waiting under **Releases**, tagged `v<version>`. If you left the draft
+option on, open it, check the files, and press **Publish release** when you are happy.
+
+## What it produces
+
+| Platform | File | Notes |
+|---|---|---|
+| Windows | `Easy MQTT Handler 2-<version>.msi` | Normal installer |
+| Windows | `Easy MQTT Handler 2-<version>-Portable.zip` | Self-contained, see [portable mode](../README.md#portable-mode) |
+| Linux | `Easy MQTT Handler 2-<version>-x86_64.AppImage` | Runs on most modern distributions |
+| macOS | `Easy MQTT Handler 2-<version>.dmg` | Apple Silicon |
+
+## Things worth knowing
+
+* **Nothing is code signed.** Windows SmartScreen will warn on first run, and macOS will refuse to open
+  the app until you right-click it and choose Open. Fixing this needs paid signing certificates from
+  Microsoft and Apple, and their secrets added to the repository.
+* **The macOS build is Apple Silicon only**, because that is what GitHub's macOS runners are. It will run
+  on Intel Macs through Rosetta. A native Intel build would need a second runner added to the matrix.
+* **Re-running for the same version** adds the files to the existing release instead of failing, which is
+  useful if one platform failed and you fixed it. It does not create a second release.
+* **If one platform fails the other two still finish**, so you can see whether the problem is specific to
+  one operating system. The release step only runs if all three succeeded.
+
+## Building the same things locally
+
+The workflow does not do anything you cannot do yourself; it runs the same `tasks.py` commands:
+
+	python tasks.py venv
+	python tasks.py test
+	python tasks.py package            # installer for the machine you are on
+	python tasks.py package-portable   # Windows only
+	python tasks.py release-notes      # prints the CHANGELOG section for this version
+
+See [BUILDING.md](BUILDING.md) and [PACKAGING.md](PACKAGING.md) for the details.

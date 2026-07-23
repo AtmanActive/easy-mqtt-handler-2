@@ -1,5 +1,8 @@
 # Building Easy MQTT Handler
 
+If you only want to produce a release for all three platforms, you do not need to build anything by
+hand: see [RELEASING.md](RELEASING.md), which uses GitHub Actions to do it for you.
+
 ## The task runner
 
 All build steps are driven by `tasks.py` in the repo root, which runs the same way on

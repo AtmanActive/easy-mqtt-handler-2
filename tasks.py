@@ -139,18 +139,36 @@ def task_venv(_args):
     ok("Environment ready")
 
 
+def remove_tree(target, description):
+    """Delete a directory, reporting honestly whether it actually went.
+
+    Windows refuses to remove a directory any process is sitting in, and
+    ignoring that produced a "Clean complete" message with the directory still
+    there, which then broke the next build in a confusing way.
+    """
+    if not target.exists():
+        return True
+
+    shutil.rmtree(target, ignore_errors=True)
+    if target.exists():
+        info(f"WARNING: could not remove {description}; something is using it. "
+             f"Close anything open in {target} and try again.")
+        return False
+
+    ok(f"Removed {description}")
+    return True
+
+
 def task_clean(_args):
     """Remove build output, caches and compiled translations."""
+    failed = []
     for directory in ("build", "dist", "logs", ".briefcase", ".pytest_cache",
                       "src/easy_mqtt_handler.dist-info"):
-        target = ROOT / directory
-        if target.exists():
-            shutil.rmtree(target, ignore_errors=True)
-            ok(f"Removed {directory}/")
+        if not remove_tree(ROOT / directory, f"{directory}/"):
+            failed.append(directory)
 
-    if TEMPLATE_DIR.exists():
-        shutil.rmtree(TEMPLATE_DIR, ignore_errors=True)
-        ok("Removed translation templates")
+    if not remove_tree(TEMPLATE_DIR, "translation templates"):
+        failed.append(str(TEMPLATE_DIR))
 
     for cache in ROOT.rglob("__pycache__"):
         if VENV_DIR in cache.parents:
@@ -159,6 +177,9 @@ def task_clean(_args):
 
     for mo_file in LOCALE_DIR.rglob("*.mo"):
         mo_file.unlink()
+
+    if failed:
+        fail("Clean did not finish: " + ", ".join(failed))
 
     ok("Clean complete (the .venv was left in place; delete it manually if needed)")
 
@@ -228,20 +249,64 @@ def _rewrite_pot_header(pot_file):
     pot_file.write_text("\n".join(header + lines[body_start:]) + "\n", encoding="utf-8")
 
 
+def compile_po_with_msgfmt(po_file, mo_file):
+    # --check-format catches mismatched placeholders between msgid and msgstr.
+    # Header checking is deliberately left off: the existing .po files predate
+    # this runner and are missing optional metadata fields.
+    run(["msgfmt", "--check-format", "--output-file", str(mo_file), str(po_file)])
+
+
+def compile_po_with_babel(po_file, mo_file):
+    """Pure Python .po compilation, for machines without GNU gettext.
+
+    Keeps the build working on a bare CI runner, where installing gettext
+    differs per platform and is especially awkward on Windows.
+    """
+    from babel.messages.mofile import write_mo
+    from babel.messages.pofile import read_po
+
+    with open(po_file, "r", encoding="utf-8") as handle:
+        catalog = read_po(handle)
+    with open(mo_file, "wb") as handle:
+        write_mo(handle, catalog)
+
+
+def have_po_compiler():
+    """True when translations can be compiled by some means."""
+    if shutil.which("msgfmt") is not None:
+        return True
+    try:
+        import babel  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+def pick_po_compiler():
+    """Return (compile function, description), preferring GNU gettext."""
+    if shutil.which("msgfmt") is not None:
+        return compile_po_with_msgfmt, "msgfmt"
+
+    try:
+        import babel  # noqa: F401
+    except ImportError:
+        fail("Neither msgfmt nor babel is available. Install GNU gettext "
+             "(Windows: winget install mlocati.GetText), or 'pip install babel'.")
+
+    return compile_po_with_babel, "babel"
+
+
 def task_compile_translations(_args):
     """Compile every .po file into its binary .mo counterpart."""
-    require_tool("msgfmt", "Install GNU gettext (Windows: winget install mlocati.GetText).")
+    compile_po, compiler_name = pick_po_compiler()
+    ok(f"Compiling translations with {compiler_name}")
 
     po_files = sorted(LOCALE_DIR.rglob("*.po"))
     if not po_files:
         fail(f"No .po files found under {LOCALE_DIR}")
 
     for po_file in po_files:
-        mo_file = po_file.with_suffix(".mo")
-        # --check-format catches mismatched placeholders between msgid and msgstr.
-        # Header checking is deliberately left off: the existing .po files predate
-        # this runner and are missing optional metadata fields.
-        run(["msgfmt", "--check-format", "--output-file", str(mo_file), str(po_file)])
+        compile_po(po_file, po_file.with_suffix(".mo"))
         ok(f"Compiled {po_file.relative_to(ROOT)}")
 
     ok(f"All done, {len(po_files)} translation(s) compiled")
@@ -324,9 +389,9 @@ def ensure_translations_compiled(args):
     if len(list(LOCALE_DIR.rglob("*.mo"))) >= po_count:
         return
 
-    if shutil.which("msgfmt") is None:
-        info("WARNING: translations are not compiled and msgfmt is unavailable; "
-             "the build will fall back to untranslated strings")
+    if not have_po_compiler():
+        info("WARNING: translations are not compiled and neither msgfmt nor babel is "
+             "available; the build will fall back to untranslated strings")
         return
 
     info("Compiled translations are missing, building them first")
@@ -340,19 +405,68 @@ def target_args(args):
     return [a for a in (args.platform, args.format) if a]
 
 
+def bundle_exists(platform=None):
+    """True when briefcase has already created a bundle we could update.
+
+    briefcase writes a briefcase.toml into every bundle it creates, so its
+    presence is the reliable signal.
+    """
+    app_name, _formal_name, _version = read_briefcase_metadata()
+    base = ROOT / "build" / app_name
+    if not base.is_dir():
+        return False
+
+    if platform is None:
+        return any(base.rglob("briefcase.toml"))
+
+    # only the requested platform counts; a Windows bundle says nothing about
+    # whether a Linux one has been created
+    for entry in base.iterdir():
+        if entry.is_dir() and entry.name.lower() == platform.lower():
+            return any(entry.rglob("briefcase.toml"))
+    return False
+
+
+def ensure_bundle_created(args):
+    """Create the bundle first when there is not one yet.
+
+    briefcase can create it as part of build/package, but doing so in the same
+    invocation fails on Windows while stamping the freshly written stub binary.
+    Creating it as its own step is reliable, and it means build and package can
+    always pass --update, which is what keeps them from shipping stale sources.
+    """
+    if bundle_exists(args.platform):
+        return
+
+    # briefcase refuses to create over an existing directory, so a bundle left
+    # half-built by an interrupted run would block every later build until it
+    # was deleted by hand
+    if args.platform:
+        app_name, _formal_name, _version = read_briefcase_metadata()
+        base = ROOT / "build" / app_name
+        if base.is_dir():
+            for entry in base.iterdir():
+                if entry.is_dir() and entry.name.lower() == args.platform.lower():
+                    info(f"Discarding an incomplete {args.platform} bundle")
+                    if not remove_tree(entry, f"incomplete {args.platform} bundle"):
+                        fail(f"Cannot rebuild while {entry} is in use.")
+
+    info("No bundle for this target yet, creating it first")
+    briefcase("create", *target_args(args), "--no-input")
+
+
 def task_build(args):
     """Build the app (use --platform/--format to target appimage, macOS, ...)."""
     ensure_translations_compiled(args)
-    # --update re-copies the app sources into the bundle. Without it briefcase
-    # reuses whatever was copied when the bundle was first created, which would
-    # silently ship stale code and miss the .mo files compiled just above.
-    briefcase("build", *target_args(args), "--update")
+    ensure_bundle_created(args)
+    briefcase("build", *target_args(args), "--update", "--no-input")
 
 
 def task_package(args):
     """Package a distributable artifact (honours --platform/--format)."""
     ensure_translations_compiled(args)
-    briefcase("package", *target_args(args), "--update", "--adhoc-sign")
+    ensure_bundle_created(args)
+    briefcase("package", *target_args(args), "--update", "--adhoc-sign", "--no-input")
 
 
 def read_briefcase_metadata():
@@ -418,6 +532,36 @@ def task_package_portable(args):
     ok(f"Unzips to a single folder: {label}\\")
 
 
+def task_release_notes(_args):
+    """Print the CHANGELOG section for the current version, for release notes."""
+    _app_name, _formal_name, version = read_briefcase_metadata()
+
+    changelog = ROOT / "CHANGELOG"
+    if not changelog.is_file():
+        fail(f"No CHANGELOG found at {changelog}")
+
+    heading = f"# Version {version}"
+    lines = changelog.read_text(encoding="utf-8").splitlines()
+
+    try:
+        start = lines.index(heading) + 1
+    except ValueError:
+        fail(f"CHANGELOG has no section titled \"{heading}\". "
+             f"Add one before releasing {version}.")
+
+    # the section runs until the next version heading
+    end = start
+    while end < len(lines) and not lines[end].startswith("# Version "):
+        end += 1
+
+    body = "\n".join(lines[start:end]).strip()
+    if body == "":
+        fail(f"The \"{heading}\" section of the CHANGELOG is empty.")
+
+    # printed rather than written to a file, so the caller decides where it goes
+    print(body)
+
+
 def task_build_all_linux(_args):
     """Package for every supported Linux distribution."""
     for target in LINUX_TARGETS:
@@ -436,6 +580,7 @@ TASKS = {
     "build": task_build,
     "package": task_package,
     "package-portable": task_package_portable,
+    "release-notes": task_release_notes,
     "build-all-linux": task_build_all_linux,
 }
 

@@ -1,4 +1,21 @@
 # Version 2.0.5
+[Chore] Releases are now built by GitHub Actions for Windows, Linux and macOS. The workflow is started
+        by hand from the Actions tab and has no push, pull request or tag trigger, so an ordinary commit
+        never builds or publishes anything. It runs the test suite on all three platforms, builds the
+        .msi and portable .zip, an AppImage and a .dmg, and attaches them to a release whose notes come
+        from this file. See docs/RELEASING.md.
+
+[Fix] Building from a clean checkout works again. build and package passed --update unconditionally,
+      which fails when there is no bundle to update yet, so the very first build in a fresh clone died.
+      The bundle is now created as its own step when it is missing, and --update is still used
+      afterwards so a rebuild cannot ship stale sources.
+
+[Fix] Translations can be compiled without GNU gettext installed, falling back to babel, which is a
+      pure Python implementation. msgfmt is still preferred when present. This removes the last piece
+      of the build that needed a system package installed differently on each operating system.
+
+[Fix] requirements.txt was missing pytest and so could not run the test suite it is meant to set up.
+
 [Feature] The About Program window now actually introduces the program. Its first tab shows the
           application icon, the program name, the version, a clickable link to the project and a short
           description of what the tool is for. The GNU GPL text that used to fill this tab moved to a
