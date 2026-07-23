@@ -6,13 +6,14 @@
 Easy MQTT Handler 2
   <br>
 </h1>
-<h4 align="center">
-Easy MQTT Handler 2 is a desktop [MQTT](https://mqtt.org/) Client.<br/>
-Implemented in Python 3, it connects to an [MQTT broker](https://www.home-assistant.io/integrations/mqtt/), listens for freely configurable messages, and reacts by executing arbitrary predefined commands.<br/>
-It comes with a Qt5-based GUI.<br/>
-License: GPLv3+.<br/>
-<br/>
-</h4>
+
+
+
+Easy MQTT Handler 2 is a desktop [MQTT](https://mqtt.org/) Client.
+Implemented in Python 3, it connects to an [MQTT broker](https://www.home-assistant.io/integrations/mqtt/), listens for freely configurable messages, and reacts by executing arbitrary predefined commands.
+It comes with a Qt5-based GUI.
+License: GPLv3+.
+
 
 This repository is a fork and continuation of the awesome [Easy MQTT Handler](https://github.com/andzeil/easy-mqtt-handler) developed by [A. Zeil](https://github.com/andzeil).
 
