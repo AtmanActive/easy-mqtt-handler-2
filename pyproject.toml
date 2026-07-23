@@ -31,8 +31,27 @@ requires = ["paho-mqtt~=2.1.0", "PyQt5~=5.15.11", "pyOpenSSL~=24.2.1", "cryptogr
 requires = ["paho-mqtt~=2.1.0", "PyQt5~=5.15.11", "pyOpenSSL~=24.2.1", "cryptography~=42.0.4"]
 
 [tool.briefcase.app.easy-mqtt-handler.linux.system.debian]
-system_requires = []
-system_runtime_requires = []
+# needed to build the package; briefcase checks these are present before starting
+system_requires = [
+    "python3-dev",
+    "build-essential",
+]
+# these become the package's Depends. PyQt5 ships its own copy of Qt, but Qt
+# still needs these libraries from the distribution to open a window at all.
+system_runtime_requires = [
+    "libgl1",
+    "libegl1",
+    "libxkbcommon-x11-0",
+    "libdbus-1-3",
+    "libxcb-icccm4",
+    "libxcb-image0",
+    "libxcb-keysyms1",
+    "libxcb-randr0",
+    "libxcb-render-util0",
+    "libxcb-shape0",
+    "libxcb-xinerama0",
+    "libxcb-xfixes0",
+]
 
 [tool.briefcase.app.easy-mqtt-handler.linux.system.rhel]
 system_requires = []

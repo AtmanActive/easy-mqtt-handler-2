@@ -25,6 +25,12 @@
           discovered. The launcher does that through a new EASY_MQTT_HANDLER_DATA environment variable,
           which can also be set by hand to keep the configuration anywhere you like.
 
+[Feature] Linux releases now include a Debian package, for installing with "apt install ./<file>" the
+          way anything else on a Debian or Ubuntu system is installed. Unlike the other Linux
+          downloads it is built against the distribution's own Python and Qt rather than carrying its
+          own, so it installs only on the distribution it was built for, which its filename records.
+          The Qt libraries it needs are declared as dependencies, so apt pulls them in.
+
 [Feature] Linux releases now include a Flatpak bundle alongside the AppImage, so the tool can be
           installed with "flatpak install <file>" on distributions where that is the usual route. The
           two Linux formats are built as separate jobs, so a failure in one still leaves the other

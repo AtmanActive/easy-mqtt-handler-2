@@ -16,6 +16,7 @@ import argparse
 import datetime
 import io
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -701,6 +702,36 @@ def platform_label(artifact_dir_name):
     return artifact_dir_name.lower().split("-", 1)[0]
 
 
+# briefcase follows Debian's convention: name_version-revision~vendor-codename_abi.deb
+DEB_NAME_PATTERN = re.compile(
+    r"^(?P<app>[^_]+)"
+    r"_(?P<version>[^-_]+)"
+    r"-(?P<revision>\d+)"
+    r"~(?P<vendor>[^-_]+)"
+    r"-(?P<codename>[^_]+)"
+    r"_(?P<abi>[^.]+)"
+    r"\.deb$"
+)
+
+
+def canonical_deb_name(filename, formal_name):
+    """Rename a .deb into the scheme the other artifacts use.
+
+    Debian's convention uses underscores and starts with the lower case package
+    name, so left alone it sorts away from every other download in the release
+    listing. The vendor, codename and architecture are kept, because for a .deb
+    they say which distribution it is actually for. dpkg reads the package
+    metadata rather than the filename, so renaming is safe.
+    """
+    match = DEB_NAME_PATTERN.match(filename)
+    if match is None:
+        return filename
+
+    canonical = formal_name.replace(" ", ".")
+    return (f"{canonical}-{match['version']}-linux"
+            f"-{match['vendor']}-{match['codename']}-{match['abi']}.deb")
+
+
 def normalise_app_name(filename, formal_name):
     """Spell the application name the same way in every artifact filename.
 
@@ -768,8 +799,12 @@ def task_collect_release(args):
         for artifact in sorted(platform_dir.rglob("*")):
             if not artifact.is_file():
                 continue
+            # the .deb rewrite already places the platform, and
+            # add_platform_to_name leaves a name that mentions it alone
             new_name = add_platform_to_name(
-                normalise_app_name(artifact.name, formal_name), platform, version)
+                normalise_app_name(
+                    canonical_deb_name(artifact.name, formal_name), formal_name),
+                platform, version)
             shutil.copy2(artifact, destination / new_name)
             ok(f"{artifact.name}  ->  {new_name}")
             collected += 1

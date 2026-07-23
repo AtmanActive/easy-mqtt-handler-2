@@ -43,6 +43,7 @@ the file extension:
 | Linux | `Easy.MQTT.Handler.2-<version>-linux-x86_64.AppImage` | Runs on most modern distributions |
 | Linux | `Easy.MQTT.Handler.2-<version>-linux-Portable.tar.gz` | The app folder plus a `data` folder, see [portable mode](../README.md#portable-mode) |
 | Linux | `Easy.MQTT.Handler.2-<version>-linux-x86_64.flatpak` | Install with `flatpak install <file>` |
+| Linux | `Easy.MQTT.Handler.2-<version>-linux-<vendor>-<codename>-<arch>.deb` | Install with `apt install ./<file>` |
 | macOS | `Easy.MQTT.Handler.2-<version>-macos.dmg` | Apple Silicon |
 
 The portable `.tar.gz` deliberately contains the app folder rather than the AppImage. It is the direct
@@ -50,7 +51,18 @@ counterpart of the Windows portable `.zip`: the whole program in one directory, 
 next to a launcher. AppImages already have their own convention for keeping configuration beside
 themselves, so wrapping one in ours would give two competing mechanisms in the same download.
 
-The Linux builds are separate jobs, so if one of them breaks the other is still produced. They upload
+The `.deb` is different from the other Linux artifacts in one important way: it is built against the
+distribution's own Python and Qt libraries rather than carrying its own, so it only installs on the
+distribution it was built for. That is why its filename keeps the vendor and codename, and why it
+targets whatever Ubuntu the GitHub runner image happens to be on. The AppImage, Flatpak and portable
+archive all run anywhere. Its dependencies are listed as `system_runtime_requires` in `pyproject.toml`.
+
+Its filename is also rewritten more heavily than the others. Debian's convention,
+`name_version-revision~vendor-codename_arch.deb`, starts with the lower case package name and uses
+underscores, which sorted it away from every other download. `dpkg` reads the package metadata rather
+than the filename, so renaming it is safe.
+
+The Linux builds are separate jobs, so if one of them breaks the others are still produced. They upload
 under the names `linux-appimage` and `linux-flatpak`, because GitHub requires upload names to be unique,
 but only the word `linux` reaches the released filename.
 

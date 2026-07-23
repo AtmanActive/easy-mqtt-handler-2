@@ -133,6 +133,7 @@ BUILT_NAMES = {
     "linux-appimage": ["Easy_MQTT_Handler_2-2.0.5-x86_64.AppImage",
                        "Easy MQTT Handler 2-2.0.5-Portable.tar.gz"],
     "linux-flatpak": ["Easy_MQTT_Handler_2-2.0.5-x86_64.flatpak"],
+    "linux-deb": ["easy-mqtt-handler_2.0.5-1~ubuntu-noble_amd64.deb"],
     "macos": ["Easy MQTT Handler 2-2.0.5.dmg"],
 }
 
@@ -162,6 +163,54 @@ def test_an_unrelated_filename_is_left_alone():
     assert tasks.normalise_app_name("something-else.txt", FORMAL_NAME) == "something-else.txt"
 
 
+DEB_BUILT = "easy-mqtt-handler_2.0.5-1~ubuntu-noble_amd64.deb"
+DEB_PUBLISHED = "Easy.MQTT.Handler.2-2.0.5-linux-ubuntu-noble-amd64.deb"
+
+
+def test_a_debian_package_is_renamed_into_the_common_scheme():
+    # Debian's own convention starts with the lower case package name and uses
+    # underscores, which sorts it away from every other download
+    assert tasks.canonical_deb_name(DEB_BUILT, FORMAL_NAME) == DEB_PUBLISHED
+
+
+def test_the_debian_package_keeps_its_distribution_and_architecture():
+    renamed = tasks.canonical_deb_name(DEB_BUILT, FORMAL_NAME)
+
+    # for a .deb these say which distribution it actually installs on
+    for part in ("ubuntu", "noble", "amd64"):
+        assert part in renamed
+
+
+def test_the_debian_package_keeps_the_deb_extension():
+    assert tasks.canonical_deb_name(DEB_BUILT, FORMAL_NAME).endswith(".deb")
+
+
+@pytest.mark.parametrize("other", [
+    "Easy MQTT Handler 2-2.0.5.msi",
+    "Easy_MQTT_Handler_2-2.0.5-x86_64.AppImage",
+    "Easy MQTT Handler 2-2.0.5-Portable.tar.gz",
+    # something that ends in .deb but is not briefcase's naming
+    "handmade.deb",
+])
+def test_non_debian_names_are_left_alone(other):
+    assert tasks.canonical_deb_name(other, FORMAL_NAME) == other
+
+
+def test_the_debian_rename_is_idempotent():
+    once = tasks.canonical_deb_name(DEB_BUILT, FORMAL_NAME)
+
+    assert tasks.canonical_deb_name(once, FORMAL_NAME) == once
+
+
+def test_the_debian_package_is_not_labelled_twice():
+    # collect-release runs the platform step afterwards, which must be a no-op
+    renamed = tasks.canonical_deb_name(DEB_BUILT, FORMAL_NAME)
+    final = tasks.add_platform_to_name(renamed, "linux", VERSION)
+
+    assert final == DEB_PUBLISHED
+    assert final.lower().count("linux") == 1
+
+
 def test_every_published_name_sorts_by_platform(tmp_path, monkeypatch):
     """The whole point: the release listing should group by platform.
 
@@ -185,6 +234,7 @@ def test_every_published_name_sorts_by_platform(tmp_path, monkeypatch):
 
     assert produced == [
         "Easy.MQTT.Handler.2-2.0.5-linux-Portable.tar.gz",
+        "Easy.MQTT.Handler.2-2.0.5-linux-ubuntu-noble-amd64.deb",
         "Easy.MQTT.Handler.2-2.0.5-linux-x86_64.AppImage",
         "Easy.MQTT.Handler.2-2.0.5-linux-x86_64.flatpak",
         "Easy.MQTT.Handler.2-2.0.5-macos.dmg",
