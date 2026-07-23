@@ -24,6 +24,11 @@ class Utils:
     # a directory of this name sitting next to the executable turns on portable mode
     PORTABLE_DATA_DIRNAME = "data"
 
+    # names the portable data directory outright, for bundles where the
+    # interpreter does not sit beside the thing the user launches. The Linux
+    # portable launcher sets it; on Windows the directory is found on its own.
+    PORTABLE_DATA_ENV_VAR = "EASY_MQTT_HANDLER_DATA"
+
     DEFAULT_SETTINGS_FILENAME = "default-settings.json"
     DEFAULT_PAYLOADS_FILENAME = "default-payloads.json"
     DEFAULT_STARTUP_FILENAME = "default-startup-messages.json"
@@ -40,8 +45,14 @@ class Utils:
         """Return the adjacent "data" directory, or None when there isn't one.
 
         Its presence is what enables portable mode: we never create it, because
-        creating it would permanently opt the user in.
+        creating it would permanently opt the user in. That holds for the
+        environment variable too, which is ignored unless it names a directory
+        that exists, so deleting the folder reverts to the per-user location.
         """
+        named = os.environ.get(cls.PORTABLE_DATA_ENV_VAR, "").strip()
+        if named:
+            return named + os.sep if os.path.isdir(named) else None
+
         candidate = os.path.join(cls.get_executable_directory(), cls.PORTABLE_DATA_DIRNAME)
         if os.path.isdir(candidate):
             # callers concatenate filenames directly, so keep the trailing separator

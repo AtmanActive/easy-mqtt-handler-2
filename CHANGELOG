@@ -9,6 +9,19 @@
         also carries its platform in the name, so a download says whether it is for Windows, Linux or
         macOS without the user having to know that .dmg and .AppImage imply one.
 
+[Feature] Linux releases now include a portable .tar.gz, the direct counterpart of the Windows portable
+          .zip. It unpacks to a single folder holding the whole program and a ready-made "data" folder,
+          so configuration is kept beside the program and nothing is written into the home directory.
+          It contains the application folder rather than the AppImage: AppImages already have their own
+          convention for this, and putting one inside ours would mean two competing mechanisms in the
+          same download. A .tar.gz rather than a .zip because it preserves the executable bits, which
+          the program needs to start at all.
+[Feature] The portable archive starts from a small launcher script sitting where the Windows .exe
+          does. It is needed because the bundled interpreter lives several directories below the folder
+          the user unpacked, so the "data" folder beside the launcher has to be named rather than
+          discovered. The launcher does that through a new EASY_MQTT_HANDLER_DATA environment variable,
+          which can also be set by hand to keep the configuration anywhere you like.
+
 [Feature] Linux releases now include a Flatpak bundle alongside the AppImage, so the tool can be
           installed with "flatpak install <file>" on distributions where that is the usual route. The
           two Linux formats are built as separate jobs, so a failure in one still leaves the other

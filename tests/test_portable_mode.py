@@ -9,10 +9,18 @@ SPDX-License-Identifier: GPL-3.0-or-later
 *  Copyright (C) 2026 AtmanActive
 """
 import os
+import sys
 
 import pytest
 
 from easy_mqtt_handler.util.Tools import Utils
+
+
+@pytest.fixture(autouse=True)
+def clear_portable_env(monkeypatch):
+    # tests must not inherit these from the surrounding environment
+    monkeypatch.delenv("APPIMAGE", raising=False)
+    monkeypatch.delenv(Utils.PORTABLE_DATA_ENV_VAR, raising=False)
 
 
 @pytest.fixture
@@ -94,3 +102,58 @@ def test_certificate_chain_temp_file_follows_portable_mode(fake_exe_dir):
 
 def test_executable_directory_is_absolute():
     assert os.path.isabs(Utils.get_executable_directory())
+
+
+def test_the_env_var_names_the_data_directory(tmp_path, monkeypatch):
+    """The Linux portable launcher sets this.
+
+    Its bundled interpreter lives in usr/bin, well below the folder the user
+    unpacked, so the data directory beside the launcher has to be named rather
+    than discovered.
+    """
+    data = tmp_path / "data"
+    data.mkdir()
+    monkeypatch.setenv(Utils.PORTABLE_DATA_ENV_VAR, str(data))
+
+    assert Utils.is_portable() is True
+    assert Utils.get_config_path() == str(data) + os.sep
+
+
+def test_the_env_var_wins_over_a_neighbouring_folder(fake_exe_dir, monkeypatch, tmp_path):
+    (fake_exe_dir / "data").mkdir()
+    named = tmp_path / "elsewhere"
+    named.mkdir()
+    monkeypatch.setenv(Utils.PORTABLE_DATA_ENV_VAR, str(named))
+
+    assert Utils.get_config_path() == str(named) + os.sep
+
+
+def test_a_missing_named_directory_turns_portable_mode_off(fake_exe_dir, monkeypatch, tmp_path):
+    # deleting the data folder must revert to the per-user location, even
+    # though the launcher still sets the variable
+    monkeypatch.setenv(Utils.PORTABLE_DATA_ENV_VAR, str(tmp_path / "gone"))
+
+    assert Utils.is_portable() is False
+    assert "easy-mqtt-handler" in Utils.get_config_path()
+
+
+def test_an_empty_env_var_is_ignored(fake_exe_dir, monkeypatch):
+    (fake_exe_dir / "data").mkdir()
+    monkeypatch.setenv(Utils.PORTABLE_DATA_ENV_VAR, "")
+
+    # falls back to looking beside the executable
+    assert Utils.get_config_path() == str(fake_exe_dir / "data") + os.sep
+
+
+def test_appimage_variable_is_not_consulted(tmp_path, monkeypatch):
+    """AppImages have their own portable convention.
+
+    Ours must not compete with it, so an .AppImage with a data folder beside it
+    is deliberately not treated as portable.
+    """
+    appimage = tmp_path / "Easy_MQTT_Handler_2.AppImage"
+    appimage.write_text("", encoding="utf-8")
+    (tmp_path / "data").mkdir()
+    monkeypatch.setenv("APPIMAGE", str(appimage))
+
+    assert Utils.get_executable_directory() == os.path.dirname(os.path.abspath(sys.executable))

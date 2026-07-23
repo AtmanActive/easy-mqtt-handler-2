@@ -41,10 +41,16 @@ the file extension:
 | Windows | `Easy MQTT Handler 2-<version>-windows.msi` | Normal installer |
 | Windows | `Easy MQTT Handler 2-<version>-windows-Portable.zip` | Self-contained, see [portable mode](../README.md#portable-mode) |
 | Linux | `Easy_MQTT_Handler_2-<version>-linux-x86_64.AppImage` | Runs on most modern distributions |
+| Linux | `Easy MQTT Handler 2-<version>-linux-Portable.tar.gz` | The app folder plus a `data` folder, see [portable mode](../README.md#portable-mode) |
 | Linux | `Easy MQTT Handler 2-<version>-linux.flatpak` | Install with `flatpak install <file>` |
 | macOS | `Easy MQTT Handler 2-<version>-macos.dmg` | Apple Silicon |
 
-The two Linux builds are separate jobs, so if one of them breaks the other is still produced. They upload
+The portable `.tar.gz` deliberately contains the app folder rather than the AppImage. It is the direct
+counterpart of the Windows portable `.zip`: the whole program in one directory, with a `data` folder
+next to a launcher. AppImages already have their own convention for keeping configuration beside
+themselves, so wrapping one in ours would give two competing mechanisms in the same download.
+
+The Linux builds are separate jobs, so if one of them breaks the other is still produced. They upload
 under the names `linux-appimage` and `linux-flatpak`, because GitHub requires upload names to be unique,
 but only the word `linux` reaches the released filename.
 
@@ -74,8 +80,9 @@ The workflow does not do anything you cannot do yourself; it runs the same `task
 
 	python tasks.py venv
 	python tasks.py test
-	python tasks.py package            # installer for the machine you are on
-	python tasks.py package-portable   # Windows only
-	python tasks.py release-notes      # prints the CHANGELOG section for this version
+	python tasks.py package                  # installer for the machine you are on
+	python tasks.py package-portable         # Windows portable .zip
+	python tasks.py package-portable-linux   # Linux portable .tar.gz (builds the AppImage first)
+	python tasks.py release-notes            # prints the CHANGELOG section for this version
 
 See [BUILDING.md](BUILDING.md) and [PACKAGING.md](PACKAGING.md) for the details.

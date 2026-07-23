@@ -62,12 +62,14 @@ jobs:
           - os: windows-latest
             label: Windows
             artifact: windows
-          # an AppImage runs on any reasonably modern distribution
+            portable: windows
+          # an AppImage runs on any reasonably modern distribution. this job
+          # also produces the portable .tar.gz, which wraps that same AppImage
+          # together with a data folder
           - os: ubuntu-latest
             label: Linux AppImage
             artifact: linux-appimage
-            briefcase_platform: linux
-            briefcase_format: appimage
+            portable: linux
           # Flatpak is its own job rather than a second command in the AppImage
           # one, so that a failure in either still leaves the other publishable
           - os: ubuntu-latest
@@ -125,13 +127,22 @@ jobs:
       - name: Compile the translations
         run: python tasks.py compile-translations
 
-      # Windows is the one target that produces two artifacts, so it gets its
-      # own step; everything else is driven straight from the matrix
+      # Windows and Linux each produce an installer plus a portable archive, so
+      # they have their own steps; anything else is driven from the matrix
       - name: Package for Windows
-        if: runner.os == 'Windows'
+        if: matrix.portable == 'windows'
         run: |
           python tasks.py package --platform windows
           python tasks.py package-portable
+
+      # the AppImage and the portable archive come from the same build: the
+      # first packages it into a .AppImage, the second tars up the app folder
+      # it was built from, together with a data folder
+      - name: Package for Linux
+        if: matrix.portable == 'linux'
+        run: |
+          python tasks.py package --platform linux --format appimage
+          python tasks.py package-portable-linux
 
       - name: Package for ${{ matrix.label }}
         if: matrix.briefcase_format

@@ -220,16 +220,31 @@ configuration files.
 Easy MQTT Handler can keep its configuration next to itself instead of in your home directory, which is
 handy for running it from a USB stick or a synced folder.
 
-### The ready-made portable download (Windows)
+### The ready-made portable download
 
-The simplest route on Windows is the portable release, named like
-`Easy MQTT Handler 2-2.0.2-Portable.zip`. It already has everything set up:
+The simplest route is the portable release for your system. It already has everything set up.
+
+**Windows** — `Easy MQTT Handler 2-<version>-windows-Portable.zip`
 
 1. Unzip it wherever you like, including a USB stick.
 2. Open the folder it creates and run `Easy MQTT Handler 2.exe`.
 
+**Linux** — `Easy MQTT Handler 2-<version>-linux-Portable.tar.gz`
+
+1. Unpack it wherever you like: `tar xzf "Easy MQTT Handler 2-<version>-linux-Portable.tar.gz"`
+2. Open the folder it creates and run `Easy MQTT Handler 2` inside it.
+
 That's it. The `data` folder is already inside, so the program is self-contained from the first start
 and writes nothing outside its own folder. No installation and no administrator rights are needed.
+
+The two archives hold the same thing: the whole program in one folder, with a `data` folder beside it.
+On Linux the item you start is a small launcher script rather than the program itself, because the
+program lives in `usr/` inside the folder and the launcher is what tells it to use `data`.
+
+> The **AppImage** download is a different thing and does *not* use the `data` folder. AppImages have
+> their own way of keeping configuration alongside themselves, using folders named
+> `<name>.AppImage.home` or `<name>.AppImage.config`. Use the portable `.tar.gz` if you want the
+> behaviour described here.
 
 ### Turning any copy into a portable one
 

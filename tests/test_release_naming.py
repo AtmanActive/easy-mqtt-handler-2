@@ -21,9 +21,21 @@ REAL_ARTIFACTS = [
      "Easy MQTT Handler 2-2.0.5-windows-Portable.zip"),
     ("linux", "Easy_MQTT_Handler_2-2.0.5-x86_64.AppImage",
      "Easy_MQTT_Handler_2-2.0.5-linux-x86_64.AppImage"),
+    ("linux", "Easy MQTT Handler 2-2.0.5-Portable.tar.gz",
+     "Easy MQTT Handler 2-2.0.5-linux-Portable.tar.gz"),
+    ("linux", "Easy MQTT Handler 2-2.0.5.flatpak",
+     "Easy MQTT Handler 2-2.0.5-linux.flatpak"),
     ("macos", "Easy MQTT Handler 2-2.0.5.dmg",
      "Easy MQTT Handler 2-2.0.5-macos.dmg"),
 ]
+
+
+def test_a_double_extension_is_kept_intact():
+    # .tar.gz must not become .tar-linux.gz or lose the .tar
+    renamed = tasks.add_platform_to_name(
+        "Easy MQTT Handler 2-2.0.5-Portable.tar.gz", "linux", VERSION)
+
+    assert renamed.endswith(".tar.gz")
 
 
 @pytest.mark.parametrize("platform,original,expected", REAL_ARTIFACTS)

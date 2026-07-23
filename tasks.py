@@ -14,10 +14,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
 """
 import argparse
 import datetime
+import io
 import os
 import shutil
 import subprocess
 import sys
+import tarfile
 import tomllib
 import zipfile
 from pathlib import Path
@@ -33,14 +35,14 @@ DIST_DIR = ROOT / "dist"
 # the folder that switches the app into portable mode, shipped inside the zip
 PORTABLE_DATA_DIRNAME = "data"
 
-PORTABLE_DATA_README = """\
+PORTABLE_DATA_README_TEMPLATE = """\
 Easy MQTT Handler 2 - portable configuration folder
 ===================================================
 
 This folder is what makes Easy MQTT Handler run in portable mode.
 
-While it sits next to "Easy MQTT Handler 2.exe", the program keeps all of its
-configuration in here instead of in your Windows user profile:
+While it sits next to {neighbour}, the program keeps all of its
+configuration in here instead of in {home_location}:
 
     default-settings.json           connection settings
     default-payloads.json           your payload handlers
@@ -53,11 +55,38 @@ You can move or copy the whole program folder anywhere, including a USB stick,
 and your configuration travels with it.
 
 Delete this folder if you would rather have the program store its settings in
-%appdata%\\easy-mqtt-handler\\ like a normally installed copy.
+{home_location} like a normally installed copy.
 
-This readme is only here so that the folder survives unzipping; some archive
+This readme is only here so that the folder survives unpacking; some archive
 tools silently drop empty folders. You can delete this file, but keep the folder.
 """
+
+
+# Sits at the top of the Linux portable archive, where the Windows zip has its
+# .exe. It exists because the bundled interpreter lives in usr/bin, several
+# levels below the folder the user unpacked, so the data folder beside this
+# script has to be pointed out explicitly.
+LINUX_PORTABLE_LAUNCHER = """\
+#!/bin/sh
+# Easy MQTT Handler 2 - portable launcher
+#
+# Runs the program with its configuration kept in the "data" folder next to
+# this script, instead of in ~/.config/easy-mqtt-handler/.
+#
+# Delete the "data" folder if you would rather use the normal per-user
+# location; this launcher then behaves like an ordinary installed copy.
+
+here=$(dirname "$(readlink -f "$0")")
+
+EASY_MQTT_HANDLER_DATA="$here/data"
+export EASY_MQTT_HANDLER_DATA
+
+exec "$here/AppRun" "$@"
+"""
+
+
+def portable_data_readme(neighbour, home_location):
+    return PORTABLE_DATA_README_TEMPLATE.format(neighbour=neighbour, home_location=home_location)
 
 # Appended to every release's notes. It applies to every build we publish, so it
 # lives here rather than being retyped into the CHANGELOG for each version,
@@ -570,13 +599,95 @@ def task_package_portable(args):
         # exactly what enables portable mode
         zf.writestr(
             str(Path(label) / PORTABLE_DATA_DIRNAME / "README.txt"),
-            PORTABLE_DATA_README,
+            portable_data_readme('"Easy MQTT Handler 2.exe"',
+                                 "%appdata%\\easy-mqtt-handler\\"),
         )
         file_count += 1
 
     size_mb = archive.stat().st_size / (1024 * 1024)
     ok(f"Packaged {archive.relative_to(ROOT)} ({file_count} files, {size_mb:.1f} MiB)")
     ok(f"Unzips to a single folder: {label}\\")
+
+
+def linux_appdir(app_name, formal_name):
+    """The self-contained directory tree briefcase builds the Linux app into."""
+    return ROOT / "build" / app_name / "linux" / "appimage" / f"{formal_name}.AppDir"
+
+
+def keep_apprun_executable(entry):
+    """Make sure AppRun stays runnable.
+
+    The launcher execs it, so an AppRun without its executable bit makes the
+    whole archive useless. Cheap insurance against the build tree being
+    produced somewhere that does not carry the bit.
+    """
+    if entry.name.endswith("/AppRun"):
+        entry.mode |= 0o111
+    return entry
+
+
+def add_tar_bytes(tar, arcname, text, mode=0o644):
+    """Write a generated text file straight into the archive."""
+    payload = text.encode("utf-8")
+    entry = tarfile.TarInfo(arcname)
+    entry.size = len(payload)
+    entry.mode = mode
+    tar.addfile(entry, io.BytesIO(payload))
+
+
+def task_package_portable_linux(args):
+    """Build the Linux portable .tar.gz: the app folder plus a data folder."""
+    if sys.platform.startswith("win"):
+        fail("The Linux portable archive has to be built on Linux.")
+
+    # the AppDir is a complete, relocatable copy of the app, the closest Linux
+    # equivalent of the folder the Windows portable zip is made from. Build it
+    # via the AppImage target, which is what fills it in and bundles the
+    # libraries, but ship the folder rather than the .AppImage: an AppImage has
+    # its own portable convention and should not be wrapped in ours.
+    args.platform = "linux"
+    args.format = "appimage"
+    task_build(args)
+
+    app_name, formal_name, version = read_briefcase_metadata()
+    appdir = linux_appdir(app_name, formal_name)
+    if not appdir.is_dir():
+        fail(f"No AppDir at {appdir}; the Linux build step must run first.")
+
+    label = f"{formal_name}-{version}-Portable"
+    archive = DIST_DIR / f"{label}.tar.gz"
+    DIST_DIR.mkdir(parents=True, exist_ok=True)
+    archive.unlink(missing_ok=True)
+
+    info(f"Building {archive.name}")
+    file_count = 0
+    with tarfile.open(archive, "w:gz") as tar:
+        for path in sorted(appdir.rglob("*")):
+            relative = path.relative_to(appdir)
+            # never carry a data folder left behind by local testing
+            if relative.parts and relative.parts[0] == PORTABLE_DATA_DIRNAME:
+                continue
+            # recursive=False so each entry is added exactly once, and so that
+            # symlinks are stored as symlinks rather than followed
+            tar.add(path, arcname=f"{label}/{relative.as_posix()}",
+                    recursive=False, filter=keep_apprun_executable)
+            if path.is_file():
+                file_count += 1
+
+        # the launcher, which is what makes this behave like the Windows zip:
+        # the interpreter lives in usr/bin, so it cannot find a data folder at
+        # the top of the tree by itself
+        add_tar_bytes(tar, f"{label}/{formal_name}",
+                      LINUX_PORTABLE_LAUNCHER, mode=0o755)
+
+        add_tar_bytes(tar, f"{label}/{PORTABLE_DATA_DIRNAME}/README.txt",
+                      portable_data_readme(f'"{formal_name}"',
+                                           "~/.config/easy-mqtt-handler/"))
+        file_count += 2
+
+    size_mb = archive.stat().st_size / (1024 * 1024)
+    ok(f"Packaged {archive.relative_to(ROOT)} ({file_count} files, {size_mb:.1f} MiB)")
+    ok(f"Unpacks to a single folder: {label}/")
 
 
 def platform_label(artifact_dir_name):
@@ -693,6 +804,7 @@ TASKS = {
     "build": task_build,
     "package": task_package,
     "package-portable": task_package_portable,
+    "package-portable-linux": task_package_portable_linux,
     "collect-release": task_collect_release,
     "release-notes": task_release_notes,
     "build-all-linux": task_build_all_linux,
