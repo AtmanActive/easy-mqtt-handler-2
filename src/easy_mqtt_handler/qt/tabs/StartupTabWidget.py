@@ -142,6 +142,11 @@ class StartupTabWidget(QWidget):
         if payload_type == TYPE_BUILTIN:
             selector = QComboBox()
             keys = builtin_keys()
+            # a saved value that is not currently offered, e.g. a disk that was
+            # connected on another machine or an earlier run, is kept rather
+            # than being silently rewritten to something else
+            if payload and payload not in keys:
+                keys = sorted(keys + [payload])
             selector.addItems(keys)
             selector.setCurrentText(payload if payload in keys else (keys[0] if keys else ""))
             self.table.setCellWidget(row, COLUMN_PAYLOAD, selector)

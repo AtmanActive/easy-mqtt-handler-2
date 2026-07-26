@@ -74,6 +74,10 @@ class AboutTabMain(QWidget):
             "It stays out of the way in the system tray while it works."))
         purpose.setWordWrap(True)
 
+        # the names stay as they are; only the surrounding words are translated
+        authorship = QLabel(_("Developed by A. Zeil, version 2 by AtmanActive."))
+        authorship.setWordWrap(True)
+
         # a real link, so the user can get to the project from here
         url = QLabel('<a href="{0}">{0}</a>'.format(info["url"]))
         url.setOpenExternalLinks(True)
@@ -87,6 +91,8 @@ class AboutTabMain(QWidget):
         layout.addLayout(heading)
         layout.addSpacing(12)
         layout.addWidget(purpose)
+        layout.addSpacing(12)
+        layout.addWidget(authorship)
         layout.addSpacing(12)
         layout.addWidget(url)
         layout.addSpacing(12)

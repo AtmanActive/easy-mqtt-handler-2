@@ -107,6 +107,32 @@ def test_the_type_is_saved(tab):
     assert saved[0]["payload"] == "networking: hostname"
 
 
+def test_a_disk_built_in_is_offered_in_the_drop_down(tab):
+    from easy_mqtt_handler.util import StartupPayload as sp
+
+    if not sp.discover_disks():
+        pytest.skip("no disks discovered on this machine")
+
+    tab.add_data("t", "disks: disk 1 free size B", 0, False, payload_type="built-in")
+
+    widget = payload_widget(tab, 0)
+    assert isinstance(widget, QComboBox)
+    assert widget.currentText() == "disks: disk 1 free size B"
+
+
+def test_a_stale_disk_key_from_another_machine_is_preserved(tab, monkeypatch):
+    from easy_mqtt_handler.util import StartupPayload as sp
+
+    # this machine has one disk, but the config was made where there were five
+    monkeypatch.setattr(sp, "discover_disks", lambda: [("only", "/only")])
+    tab.add_data("t", "disks: disk 5 free size B", 0, False, payload_type="built-in")
+
+    # the saved value must survive viewing the tab, not be rewritten to disk 1
+    assert tab.payload_value(0) == "disks: disk 5 free size B"
+    widget = payload_widget(tab, 0)
+    assert "disks: disk 5 free size B" in [widget.itemText(i) for i in range(widget.count())]
+
+
 def test_a_built_in_selection_is_saved(tab):
     tab.add_data("home/x", "", 0, False, payload_type="built-in")
     payload_widget(tab, 0).setCurrentText("time: now unixtime")

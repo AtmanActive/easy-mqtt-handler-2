@@ -21,6 +21,8 @@ import datetime
 import getpass
 import os
 import platform
+import re
+import shutil
 import socket
 import struct
 import subprocess
@@ -199,6 +201,168 @@ def _uptime_duration():
     return str(datetime.timedelta(seconds=int(elapsed.total_seconds())))
 
 
+# --- disks ------------------------------------------------------------------
+
+# the values offered for each discovered disk, in the wording asked for
+DISK_FIELDS = ("name", "total size B", "used size B", "free size B",
+               "used percentage", "free percentage")
+
+DISK_KEY_PATTERN = re.compile(
+    r"^disks: disk (?P<index>\d+) (?P<field>"
+    + "|".join(re.escape(field) for field in DISK_FIELDS)
+    + r")$")
+
+# only real, local filesystems are listed. network and pseudo filesystems are
+# left out on purpose: a value from them is rarely wanted, and a dead network
+# mount could otherwise block startup while its size is read.
+_LINUX_LOCAL_FILESYSTEMS = frozenset({
+    "ext2", "ext3", "ext4", "xfs", "btrfs", "f2fs", "jfs", "reiserfs",
+    "vfat", "exfat", "ntfs", "ntfs3", "fuseblk", "zfs", "ufs",
+    "hfs", "hfsplus", "apfs",
+})
+
+
+def _unescape_proc_mount(field):
+    # /proc/mounts escapes space, tab, newline and backslash as octal
+    for code, char in (("\\040", " "), ("\\011", "\t"), ("\\012", "\n"), ("\\134", "\\")):
+        field = field.replace(code, char)
+    return field
+
+
+def _discover_windows_drives():
+    drives = []
+    try:
+        import ctypes
+        import string
+
+        bitmask = ctypes.windll.kernel32.GetLogicalDrives()
+        # keep only fixed and removable disks; skip network (4) and CD-ROM (5)
+        wanted_types = (2, 3)
+        for position, letter in enumerate(string.ascii_uppercase):
+            if not (bitmask >> position) & 1:
+                continue
+            root = f"{letter}:\\"
+            try:
+                if ctypes.windll.kernel32.GetDriveTypeW(root) in wanted_types:
+                    drives.append((root, root))
+            except (OSError, ValueError):
+                continue
+    except (OSError, AttributeError, ImportError, ValueError):
+        pass
+    return drives
+
+
+def _discover_linux_mounts():
+    mounts = []
+    try:
+        with open("/proc/mounts", "r", encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                parts = line.split()
+                if len(parts) < 3:
+                    continue
+                mountpoint = _unescape_proc_mount(parts[1])
+                filesystem = parts[2]
+                if filesystem in _LINUX_LOCAL_FILESYSTEMS:
+                    mounts.append((mountpoint, mountpoint))
+    except OSError:
+        pass
+    return mounts
+
+
+def _discover_macos_mounts():
+    # the boot volume plus whatever is mounted under /Volumes; deduplication by
+    # device id below removes the boot volume's /Volumes alias
+    mounts = [("/", "/")]
+    try:
+        for entry in sorted(os.listdir("/Volumes")):
+            path = os.path.join("/Volumes", entry)
+            if os.path.isdir(path):
+                mounts.append((path, path))
+    except OSError:
+        pass
+    return mounts
+
+
+def discover_disks():
+    """The connected disks, as an ordered list of (name, mountpoint).
+
+    Enumeration only; the sizes are read later, per disk, so building the list
+    stays cheap and a single unreadable disk cannot spoil the whole list. The
+    order is stable (sorted by mountpoint) so that "disk 1" means the same disk
+    throughout a run. Never raises.
+    """
+    if sys.platform.startswith("win"):
+        raw = _discover_windows_drives()
+    elif sys.platform == "darwin":
+        raw = _discover_macos_mounts()
+    else:
+        raw = _discover_linux_mounts()
+
+    disks = []
+    seen_devices = set()
+    for name, mountpoint in sorted(raw, key=lambda pair: pair[1]):
+        try:
+            device = os.stat(mountpoint).st_dev
+        except OSError:
+            # a mountpoint that cannot even be stat'd is skipped
+            continue
+        # the same filesystem reached through two mountpoints is one disk
+        if device in seen_devices:
+            continue
+        seen_devices.add(device)
+        disks.append((name, mountpoint))
+    return disks
+
+
+def disk_builtin_keys():
+    """The built-in names for the disks connected right now."""
+    keys = []
+    for index in range(1, len(discover_disks()) + 1):
+        for field in DISK_FIELDS:
+            keys.append(f"disks: disk {index} {field}")
+    return keys
+
+
+def _resolve_disk(name):
+    match = DISK_KEY_PATTERN.match(name)
+    if match is None:
+        return None, f"unknown built-in value \"{name}\""
+
+    index = int(match.group("index"))
+    field = match.group("field")
+
+    disks = discover_disks()
+    # the machine may have had more disks on a previous run; that is expected
+    # and simply skipped rather than being an error
+    if index < 1 or index > len(disks):
+        return None, f"disk {index} is not connected"
+
+    disk_name, mountpoint = disks[index - 1]
+    if field == "name":
+        return disk_name, None
+
+    try:
+        usage = shutil.disk_usage(mountpoint)
+    except OSError as error:
+        return None, f"disk {index} (\"{disk_name}\") could not be read: {error}"
+
+    if field == "total size B":
+        return str(usage.total), None
+    if field == "used size B":
+        return str(usage.used), None
+    if field == "free size B":
+        return str(usage.free), None
+
+    if usage.total <= 0:
+        return None, f"disk {index} (\"{disk_name}\") reports a total size of zero"
+    if field == "used percentage":
+        return f"{usage.used / usage.total * 100:.1f}", None
+    if field == "free percentage":
+        return f"{usage.free / usage.total * 100:.1f}", None
+
+    return None, f"unknown built-in value \"{name}\""
+
+
 # --- the registry -----------------------------------------------------------
 
 def _build_registry():
@@ -246,10 +410,10 @@ def builtin_keys():
 
     The list only grows as more built-ins are added, so it is kept in
     alphabetical order rather than insertion order, which is easier to scan in
-    the drop down. Resolution is a dictionary lookup, so this order is purely
-    for display.
+    the drop down. The disk entries are worked out fresh each time, because how
+    many disks there are can change between runs.
     """
-    return sorted(BUILTIN_RESOLVERS.keys())
+    return sorted(list(BUILTIN_RESOLVERS.keys()) + disk_builtin_keys())
 
 
 # --- resolution -------------------------------------------------------------
@@ -257,6 +421,10 @@ def builtin_keys():
 def _resolve_builtin(name):
     resolver = BUILTIN_RESOLVERS.get(name)
     if resolver is None:
+        # the disk values are not in the static registry, since they depend on
+        # what is connected right now
+        if name.startswith("disks: "):
+            return _resolve_disk(name)
         return None, f"unknown built-in value \"{name}\""
 
     try:

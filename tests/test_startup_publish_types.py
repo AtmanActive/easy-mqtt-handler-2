@@ -129,6 +129,37 @@ def test_an_unavailable_built_in_is_skipped(worker):
     assert any("Skipping startup message" in line for line in worker.logged)
 
 
+def test_a_disk_row_publishes_a_size(worker, monkeypatch, tmp_path):
+    import shutil
+
+    from easy_mqtt_handler.util import StartupPayload as sp
+    monkeypatch.setattr(sp, "discover_disks", lambda: [("TestDisk", str(tmp_path))])
+
+    MQTTStartupMessages.get_instance().startup_data = [
+        {"topic": "disk/free", "type": "built-in", "payload": "disks: disk 1 free size B"}]
+    client = FakeClient()
+
+    worker.send_startup_messages(client)
+
+    expected = str(shutil.disk_usage(str(tmp_path)).free)
+    assert [(m["topic"], m["payload"]) for m in client.published] == [("disk/free", expected)]
+
+
+def test_a_missing_disk_row_is_skipped_and_logged(worker, monkeypatch):
+    from easy_mqtt_handler.util import StartupPayload as sp
+    monkeypatch.setattr(sp, "discover_disks", lambda: [("only", "/only")])
+
+    MQTTStartupMessages.get_instance().startup_data = [
+        {"topic": "disk/x", "type": "built-in", "payload": "disks: disk 4 total size B"}]
+    client = FakeClient()
+
+    worker.send_startup_messages(client)
+
+    assert client.published == []
+    assert any("Skipping startup message" in line and "disk 4 is not connected" in line
+               for line in worker.logged)
+
+
 def test_a_skipped_row_does_not_stop_the_others(worker):
     MQTTStartupMessages.get_instance().startup_data = [
         {"topic": "first", "type": "command", "payload": "missing"},

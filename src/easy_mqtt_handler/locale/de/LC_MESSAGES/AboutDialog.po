@@ -84,3 +84,7 @@ msgid ""
 msgstr ""
 "Veröffentlicht unter der GNU General Public License v3 oder später. Der "
 "vollständige Text steht im Reiter \"Lizenz\"."
+
+#: ./src/easy_mqtt_handler/qt/AboutDialog.py:80
+msgid "Developed by A. Zeil, version 2 by AtmanActive."
+msgstr "Entwickelt von A. Zeil, Version 2 von AtmanActive."

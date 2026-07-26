@@ -46,8 +46,9 @@ def test_the_offered_built_ins_match_the_registry():
         assert expected in keys
     # and there are no duplicates
     assert len(keys) == len(set(keys))
-    # every registered built-in is offered
-    assert set(keys) == set(sp.BUILTIN_RESOLVERS)
+    # every statically registered built-in is offered (disks are added on top,
+    # discovered at runtime, so this is a subset check rather than equality)
+    assert set(sp.BUILTIN_RESOLVERS).issubset(set(keys))
 
 
 def test_the_built_ins_are_offered_in_alphabetical_order():

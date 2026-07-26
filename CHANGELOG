@@ -1,3 +1,22 @@
+# Version 2.0.8
+[Feature] The About Program window now credits the authors: "Developed by A. Zeil, version 2 by
+          AtmanActive."
+
+[Feature] The "Send on Startup" built-in values now include the connected disks. On startup the program
+          finds the local disks and offers, for each one, its name, total, used and free size in bytes,
+          and its used and free percentage. So a machine with three disks adds eighteen entries to the
+          drop down. Disks are found without any external program: drive letters on Windows, /proc/mounts
+          on Linux, /Volumes on macOS, with sizes read through the standard library.
+[Feature] Network drives and empty removable drives are deliberately left out, both because their size
+          is rarely what you want and so that a disconnected network drive cannot hold up startup while
+          its size is read. The same filesystem reached through two mountpoints is listed only once.
+
+[Note] The set of disks can differ from one run to the next. A saved value for a disk that is no longer
+       connected, for example "disks: disk 5 free size B" on a machine that now has one disk, is skipped
+       with a line in the Logs tab rather than causing any error. Opening the tab keeps such a value in
+       the drop down rather than quietly changing it, so a configuration made on one machine survives
+       being opened on another.
+
 # Version 2.0.7
 [Feature] The Payload Handlers tab now explains itself. A short note above the table describes how a
           message is matched to a row and how $1, $2, ... in the command line arguments are filled in
