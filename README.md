@@ -103,7 +103,8 @@ Every row is one message:
 | Column | Meaning |
 |---|---|
 | **Topic** | The MQTT topic to publish to. This is an **absolute** topic and is *not* prefixed with the topic from the Connection tab, because you are usually addressing some other device's entity. |
-| **Payload** | What to send. Plain text or JSON, whatever the receiving side expects. |
+| **Type** | How the Payload should be read: `literal`, `command` or `built-in`. See below. |
+| **Payload** | What to send. What this means depends on the Type. |
 | **QoS** | Quality of Service, `0`, `1` or `2`. Leave it at `0` if you have no reason to change it. |
 | **Retain** | Ask the broker to remember this message and deliver it to anyone subscribing later. Home Assistant usually wants this on for configuration messages. |
 | **HA Entity** | Which kind of Home Assistant entity to create. Defaults to `sensor`. Optional, see below. |
@@ -112,6 +113,40 @@ Every row is one message:
 
 Use **Add Message** and **Remove Message** to manage the list, then save with the toolbar's save button, just as
 on the Payload Handlers tab. Rows without a topic are ignored, so a half-finished row is never sent.
+
+### Payload types
+
+The **Type** column decides what the Payload means:
+
+* **literal** — the Payload is sent exactly as you typed it. This is the normal case, and what every row did
+  before this option existed.
+* **environment** — the Payload is the name of an environment variable, and its value is sent. If the variable
+  is not set, or is set but empty, the row is quietly skipped with a line in the [Logs tab](#logs-tab). The
+  value is sent as-is; only the variable name is trimmed of surrounding spaces.
+* **command** — the Payload is the path to a program. When the messages are sent, that program is run and its
+  output becomes the payload. This lets you report anything you can write a small script for. A relative path is
+  looked for next to the [configuration](#configuration-files); an absolute path is used as-is. If the program
+  does not exist, or produces no output, the row is quietly skipped and a line explaining why appears in the
+  [Logs tab](#logs-tab).
+* **built-in** — the Payload becomes a drop down of values the tool can work out for itself, without running
+  anything. The current selection is what gets sent. The values available to start with are:
+
+  | Group | Values |
+  |---|---|
+  | Current time | `time: now` as a Unix timestamp, or in full ISO, date-only or time-only form |
+  | This program's launch time | `time: last launch` in the same four forms |
+  | The machine's last boot time | `time: last boot` in the same four forms |
+  | Time & zone | `time: timezone name`, `time: UTC offset`, `time: uptime duration` |
+  | Networking | `networking: hostname`, and the `1st`/`2nd`/`3rd IP address` of the machine |
+  | Operating system | `system: operating system name`, `release`, `full version`, `platform summary` |
+  | Machine | `system: machine architecture`, `machine word size`, `machine CPU count` |
+  | Account | `system: logged in username` |
+
+  The list is shown in alphabetical order, and more built-in values will be added over time.
+
+Whichever type a row uses, the value is worked out **at the moment the messages are sent**, not when you save
+them. So if the connection drops and is re-established, the clock, the command output and the IP address are read
+again rather than repeating whatever they were at startup.
 
 ### Creating Home Assistant entities automatically
 

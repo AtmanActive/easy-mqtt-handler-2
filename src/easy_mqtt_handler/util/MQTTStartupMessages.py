@@ -12,6 +12,8 @@ import json
 import os
 import re
 
+from easy_mqtt_handler.util.StartupPayload import DEFAULT_TYPE, PAYLOAD_TYPES
+
 # a message the user has not filled in a topic for cannot be published
 REQUIRED_FIELD = "topic"
 
@@ -114,8 +116,15 @@ class MQTTStartupMessages(object):
             if qos not in VALID_QOS_LEVELS:
                 qos = 0
 
+            # how the payload should be interpreted; an unfamiliar value (or an
+            # older config with none) falls back to a plain literal
+            payload_type = str(item.get("type", DEFAULT_TYPE))
+            if payload_type not in PAYLOAD_TYPES:
+                payload_type = DEFAULT_TYPE
+
             messages.append({
                 "topic": topic,
+                "type": payload_type,
                 "payload": str(item.get("payload", "")),
                 "qos": qos,
                 "retain": bool(item.get("retain", False)),

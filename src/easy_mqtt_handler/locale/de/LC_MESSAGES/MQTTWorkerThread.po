@@ -130,6 +130,10 @@ msgstr "Startnachricht an Topic \"{0}\" konnte nicht gesendet werden: {1}"
 msgid "All startup messages sent."
 msgstr "Alle Startnachrichten gesendet."
 
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:143
+msgid "Skipping startup message for topic \"{0}\": {1}"
+msgstr "Startnachricht für Topic \"{0}\" wird übersprungen: {1}"
+
 #: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:135
 msgid "Skipping Home Assistant discovery for topic \"{0}\": {1}"
 msgstr "Home-Assistant-Erkennung für Topic \"{0}\" übersprungen: {1}"

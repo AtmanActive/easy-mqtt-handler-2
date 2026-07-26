@@ -20,6 +20,7 @@ from paho.mqtt.client import ssl
 from easy_mqtt_handler.util.MQTTPayloads import MQTTPayloads
 from easy_mqtt_handler.util.MQTTSettings import MQTTSettings
 from easy_mqtt_handler.util.MQTTStartupMessages import MQTTStartupMessages, DiscoveryError, discovery_for
+from easy_mqtt_handler.util.StartupPayload import resolve_startup_payload
 from easy_mqtt_handler.util.Tools import Utils
 
 # Set the local directory
@@ -135,13 +136,25 @@ class MQTTWorkerThread(QThread):
 
         self.add_log_line.emit(_("Sending {0} startup message(s).").format(len(messages)))
 
+        # commands with a relative path are looked for beside the configuration
+        search_dirs = [Utils.get_config_path(), os.getcwd()]
+
         for message in messages:
+            # work out what to actually publish: a literal, a command's output,
+            # or a built-in value. a row that cannot produce one is skipped.
+            payload, note = resolve_startup_payload(message, search_dirs)
+            if payload is None:
+                self.add_log_line.emit(
+                    _("Skipping startup message for topic \"{0}\": {1}")
+                    .format(message["topic"], note))
+                continue
+
             # announce the entity to Home Assistant first, so that it exists by
             # the time the value below arrives on its state topic
             self.send_discovery_message(client, message)
 
             try:
-                result = client.publish(message["topic"], message["payload"],
+                result = client.publish(message["topic"], payload,
                                         qos=message["qos"], retain=message["retain"])
                 # a failure here must not stop the remaining messages or the
                 # connection itself, so report it and carry on
@@ -153,7 +166,7 @@ class MQTTWorkerThread(QThread):
 
                 self.add_log_line.emit(
                     _("Sent startup message \"{0}\" to topic \"{1}\".")
-                    .format(message["payload"], message["topic"]))
+                    .format(payload, message["topic"]))
             except (ValueError, OSError) as error:
                 self.add_log_line.emit(
                     _("Couldn't send startup message to topic \"{0}\": {1}")

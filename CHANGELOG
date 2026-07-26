@@ -1,3 +1,37 @@
+# Version 2.0.7
+[Feature] The Payload Handlers tab now explains itself. A short note above the table describes how a
+          message is matched to a row and how $1, $2, ... in the command line arguments are filled in
+          from the payload, with an example. This was previously only documented in the README.
+
+[Feature] The "Send on Startup" tab gained a fourth Type, "environment". The Payload is then the name of
+          an environment variable, and its value is sent when the messages go out. A variable that is
+          not set, or is set but empty, is skipped with a line in the Logs tab rather than publishing an
+          empty message. The value is sent exactly as it is; only the variable name is trimmed.
+
+# Version 2.0.6
+[Feature] The "Send on Startup" tab gained a Type column, so a row's Payload can now be one of three
+          things. "literal" is the previous behaviour: the Payload is sent verbatim. "command" treats
+          the Payload as a path to a program, runs it, and sends its output; a program that does not
+          exist is skipped with a line in the log, and one that produces no output is skipped too.
+          "built-in" turns the Payload into a drop down of values the program can work out for itself.
+[Feature] The built-in values to start with are the current time, the program's launch time and the
+          machine's last boot time, each as a Unix timestamp or in ISO date, time or full form; the
+          hostname and the first few local IP addresses; the operating system name, release, full
+          version and platform summary; the machine architecture, word size and CPU count; the logged
+          in username; the timezone name, UTC offset and system uptime. More can be added over time.
+          The list is presented in alphabetical order.
+[Feature] These payloads are worked out at the moment the messages are sent, not when they are saved,
+          so a reconnect re-reads the clock, the command output and the IP address rather than
+          repeating a stale value.
+
+[Note] Command and built-in rows that cannot produce a value are skipped rather than sending an empty
+       message, and the reason is written to the Logs tab. A skipped row does not announce a Home
+       Assistant entity either, since there would be nothing to populate it.
+
+[Note] Existing configurations are unaffected: a row with no Type behaves as "literal", exactly as it
+       did before. The type names and the built-in value names are stored in the configuration and are
+       deliberately not translated, so a config stays readable across languages.
+
 # Version 2.0.5
 [Chore] Releases are now built by GitHub Actions for Windows, Linux and macOS. The workflow is started
         by hand from the Actions tab and has no push, pull request or tag trigger, so an ordinary commit

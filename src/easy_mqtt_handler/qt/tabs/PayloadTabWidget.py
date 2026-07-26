@@ -13,7 +13,7 @@ import os
 from PyQt5 import QtGui
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget, QTableWidget, QAbstractItemView, QPushButton, QVBoxLayout, QHBoxLayout, \
-    QHeaderView, QSizePolicy, QTableWidgetItem, QFileDialog
+    QHeaderView, QSizePolicy, QTableWidgetItem, QFileDialog, QLabel
 
 from easy_mqtt_handler.util.MQTTPayloads import MQTTPayloads
 from easy_mqtt_handler.util.Tools import Utils
@@ -33,6 +33,16 @@ class PayloadTabWidget(QWidget):
     def __init__(self):
         super().__init__()
 
+        # explain the matching and the $1/$2 substitution, which is otherwise
+        # only documented in the README and easy to miss
+        self.hint = QLabel(_("When a message arrives whose \"command\" and \"args\" match a row, the program runs "
+                             "that row's Command to Run.\n"
+                             "Command line arguments may contain $1, $2, ... which are replaced by the payload's "
+                             "\"param1\", \"param2\", ... A $X with no matching param is removed.\n"
+                             "Example payload: {\"command\": \"notify\", \"args\": \"test\", "
+                             "\"param1\": \"hello\", \"param2\": \"world\"}"))
+        self.hint.setWordWrap(True)
+
         # create the table
         self.table = QTableWidget()
         self.table.setColumnCount(5)
@@ -50,6 +60,7 @@ class PayloadTabWidget(QWidget):
 
         # create the layout
         layout = QVBoxLayout()
+        layout.addWidget(self.hint)
         layout.addWidget(self.table)
 
         button_layout = QHBoxLayout()
