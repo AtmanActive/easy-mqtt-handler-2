@@ -64,6 +64,15 @@ please take a look at the [SSL/TLS Configuration](./docs/SSL.md) documentation. 
 certificates provided by a Certificate Authority (CA) and self-signed certificates by using openSSL to create all the 
 necessary certificates and your own CA.
 
+At the very bottom of the tab is a **Theme** setting with three choices:
+
+* **system** (the default) — follow the desktop's own light/dark setting.
+* **light** — always use the light look, whatever the desktop is set to.
+* **dark** — always use the dark look.
+
+The choice takes effect immediately and is saved with the rest of your settings. Leave it on **system**
+and the tool behaves as it always has, matching your desktop.
+
 ## Payload Handlers tab
 
 ![Payload Handlers](docs/assets/payload-handlers-tab.png)

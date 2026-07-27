@@ -16,6 +16,10 @@ msgstr ""
 msgid "Hostname:"
 msgstr "Hostname:"
 
+#: ./src/easy_mqtt_handler/qt/tabs/ConnectionTabWidget.py:127
+msgid "Theme:"
+msgstr "Theme:"
+
 #: ./src/easy_mqtt_handler/qt/tabs/ConnectionTabWidget.py:36
 msgid "Port:"
 msgstr "Port:"

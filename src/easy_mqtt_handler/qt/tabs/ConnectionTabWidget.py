@@ -12,8 +12,10 @@ import os
 
 from PyQt5 import QtGui
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLineEdit, QLabel, QCheckBox, QHBoxLayout, QFileDialog, QPushButton
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLineEdit, QLabel, QCheckBox, QHBoxLayout, QFileDialog, QPushButton, \
+    QComboBox
 from easy_mqtt_handler.util.MQTTSettings import MQTTSettings
+from easy_mqtt_handler.util.Theme import THEME_CHOICES, DEFAULT_THEME_CHOICE
 from easy_mqtt_handler.util.Tools import Utils
 
 # Set the local directory
@@ -26,6 +28,8 @@ _ = translate.gettext
 
 class ConnectionTabWidget(QWidget):
     settings_changed = pyqtSignal(bool)
+    # emitted when the theme choice changes, so it can be applied straight away
+    theme_changed = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -119,6 +123,11 @@ class ConnectionTabWidget(QWidget):
         self.layout_ssl_settings.addLayout(self.enable_client_ssl_auth_layout)
         self.layout_ssl_settings.addWidget(self.client_ssl_auth_widget)
 
+        # the light/dark override, sitting on its own at the very bottom
+        self.theme_label = QLabel(_("Theme:"))
+        self.theme_dropdown = QComboBox()
+        self.theme_dropdown.addItems(list(THEME_CHOICES))
+
         # Create a layout for the textboxes and labels
         layout = QVBoxLayout()
         layout.addWidget(self.hostname_label)
@@ -135,6 +144,11 @@ class ConnectionTabWidget(QWidget):
         layout.addWidget(self.ssl_settings_widget)
 
         layout.addStretch(1)
+
+        # kept below the stretch so it stays pinned to the bottom of the tab
+        layout.addWidget(self.theme_label)
+        layout.addWidget(self.theme_dropdown)
+
         # Set the layout for the QWidget
         self.setLayout(layout)
 
@@ -185,6 +199,12 @@ class ConnectionTabWidget(QWidget):
         self.client_ssl_auth_widget.setHidden(not self.enable_client_ssl_auth_checkbox.isChecked())
         self.setting_changed_event()
 
+    def theme_changed_event(self):
+        # record and mark unsaved like any other setting, then apply it live so
+        # the user sees the result without waiting or restarting
+        self.setting_changed_event()
+        self.theme_changed.emit()
+
     def set_new_connection_settings(self):
         settings_data = []
 
@@ -200,7 +220,10 @@ class ConnectionTabWidget(QWidget):
             "enable_client_ssl_auth": self.enable_client_ssl_auth_checkbox.isChecked(),
             "client_certificate_file": self.client_certificate_file.text(),
             "client_key_file": self.client_key_file.text(),
-            "allow_insecure_ssl": self.insecure_ssl_checkbox.isChecked()
+            "allow_insecure_ssl": self.insecure_ssl_checkbox.isChecked(),
+            # included here because refresh_settings replaces the whole dict; if
+            # it were left out, saving a connection change would drop the theme
+            "theme": self.theme_dropdown.currentText()
         }
 
         MQTTSettings.get_instance().refresh_settings(settings_data)
@@ -219,6 +242,8 @@ class ConnectionTabWidget(QWidget):
         self.client_certificate_file.setText(settings.client_certificate_file)
         self.client_key_file.setText(settings.client_key_file)
         self.insecure_ssl_checkbox.setChecked(settings.allow_insecure_ssl)
+        self.theme_dropdown.setCurrentText(settings.theme if settings.theme in THEME_CHOICES
+                                           else DEFAULT_THEME_CHOICE)
 
         # now that we've loaded the settings, enable event handlers to catch changes
         self.hostname_textbox.textChanged.connect(self.setting_changed_event)
@@ -232,6 +257,7 @@ class ConnectionTabWidget(QWidget):
         self.client_certificate_file.textChanged.connect(self.setting_changed_event)
         self.client_key_file.textChanged.connect(self.setting_changed_event)
         self.insecure_ssl_checkbox.stateChanged.connect(self.setting_changed_event)
+        self.theme_dropdown.currentTextChanged.connect(self.theme_changed_event)
 
         # check whether we need to show SSL/TLS settings
         self.ssl_settings_widget.setHidden(not self.enable_ssl_checkbox.isChecked())

@@ -52,8 +52,12 @@ class MainWindow(QMainWindow):
     Main Window init()
     """
 
-    def __init__(self, app, mqtt_config_file, payload_config_file, startup_config_file=""):
+    def __init__(self, app, mqtt_config_file, payload_config_file, startup_config_file="",
+                 theme_manager=None):
         super().__init__()
+
+        # applies the Theme choice from the Connection tab straight away
+        self.theme_manager = theme_manager
 
         self.worker_thread: QThread
 
@@ -95,6 +99,7 @@ class MainWindow(QMainWindow):
 
         # wire change handlers
         self.connection_tab.settings_changed.connect(self.on_connection_settings_changed)
+        self.connection_tab.theme_changed.connect(self.on_theme_changed)
         self.payload_editor.settings_changed.connect(self.on_payloads_changed)
         self.startup_editor.settings_changed.connect(self.on_startup_messages_changed)
 
@@ -244,6 +249,12 @@ class MainWindow(QMainWindow):
 
     def on_startup_messages_changed(self, changed):
         self.mark_tab_unsaved(self.startup_editor, _("Send on Startup"))
+
+    def on_theme_changed(self):
+        # the new choice is already in the settings by now, so re-syncing picks
+        # it up and repaints the whole application immediately
+        if self.theme_manager is not None:
+            self.theme_manager.sync_with_system()
 
     def on_connect_action(self):
         if self.worker_thread.mqtt_connect():

@@ -25,6 +25,12 @@ from PyQt5.QtWidgets import QStyleFactory
 DARK = "dark"
 LIGHT = "light"
 
+# the extra choice the user can make in the Connection tab: follow the OS
+SYSTEM = "system"
+# the values offered in the Theme drop down, and stored in the settings file
+THEME_CHOICES = (SYSTEM, LIGHT, DARK)
+DEFAULT_THEME_CHOICE = SYSTEM
+
 # how often we re-check the system preference so the app can follow a live switch
 WATCH_INTERVAL_MS = 2000
 
@@ -68,33 +74,70 @@ def _detect_macos():
     return DARK if "dark" in result.stdout.strip().lower() else LIGHT
 
 
-def _detect_linux():
-    """Ask the XDG desktop settings, falling back to the GTK theme name."""
-    for schema, key in (
-        ("org.gnome.desktop.interface", "color-scheme"),
-        ("org.gnome.desktop.interface", "gtk-theme"),
-    ):
-        try:
-            result = subprocess.run(
-                ["gsettings", "get", schema, key],
-                capture_output=True, text=True, timeout=5,
-            )
-        except (OSError, subprocess.SubprocessError):
-            return None
+# Where each desktop keeps its light/dark preference. The desktop-specific
+# schemas come first: on Cinnamon and MATE the GTK theme name is the real
+# signal, and the GNOME schema is either absent or stuck at a default that does
+# not reflect the actual theme, which is why the app used to stay light there.
+#
+# The "kind" says how to read the value:
+#   scheme      - a color-scheme setting: "prefer-dark"/"prefer-light"/"default"
+#   theme       - a GTK theme name from a schema that only exists on that
+#                 desktop, so it is authoritative: dark if the name says so,
+#                 otherwise light
+#   theme-weak  - a GTK theme name from the shared GNOME schema, which is
+#                 ambiguous: only a "dark" in the name is trusted
+LINUX_THEME_SOURCES = (
+    ("org.cinnamon.desktop.interface", "gtk-theme", "theme"),
+    ("org.mate.interface", "gtk-theme", "theme"),
+    ("org.gnome.desktop.interface", "color-scheme", "scheme"),
+    ("org.gnome.desktop.interface", "gtk-theme", "theme-weak"),
+)
 
-        if result.returncode != 0:
-            continue
 
-        value = result.stdout.strip().strip("'\"").lower()
-        if not value:
-            continue
-        if "dark" in value:
+def _gsettings_get(schema, key):
+    """Read one gsettings value, or None if it cannot be read."""
+    try:
+        result = subprocess.run(
+            ["gsettings", "get", schema, key],
+            capture_output=True, text=True, timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        # gsettings is not installed, or hung
+        return None
+
+    if result.returncode != 0:
+        # the schema is not installed on this desktop
+        return None
+
+    value = result.stdout.strip().strip("'\"")
+    return value or None
+
+
+def _interpret_linux_theme(kind, value):
+    """Turn one setting's value into DARK, LIGHT, or None (inconclusive)."""
+    lowered = value.lower()
+    if kind == "scheme":
+        if "dark" in lowered:
             return DARK
-        # an explicit 'prefer-light'/'default' answer from color-scheme is
-        # conclusive; a theme name that merely lacks "dark" is not
-        if key == "color-scheme" and value != "default":
+        if "light" in lowered:
             return LIGHT
+        return None  # "default" tells us nothing
+    if kind == "theme":
+        return DARK if "dark" in lowered else LIGHT
+    if kind == "theme-weak":
+        return DARK if "dark" in lowered else None
+    return None
 
+
+def _detect_linux():
+    """Ask the desktop's own settings, most authoritative source first."""
+    for schema, key, kind in LINUX_THEME_SOURCES:
+        value = _gsettings_get(schema, key)
+        if value is None:
+            continue
+        result = _interpret_linux_theme(kind, value)
+        if result is not None:
+            return result
     return None
 
 
@@ -110,6 +153,20 @@ def detect_system_theme():
     if sys.platform == "darwin":
         return _detect_macos()
     return _detect_linux()
+
+
+def resolve_theme(theme_choice):
+    """Turn the user's choice into the theme to apply.
+
+    A "light" or "dark" choice is honoured directly; "system" (or an empty or
+    unfamiliar value, which is what an older settings file has) follows the
+    operating system.
+    """
+    if theme_choice == DARK:
+        return DARK
+    if theme_choice == LIGHT:
+        return LIGHT
+    return detect_system_theme()
 
 
 # DWM attribute that switches a window's title bar to the dark variant. Windows 10
@@ -185,9 +242,14 @@ def build_dark_palette():
 class ThemeManager(QObject):
     """Keeps the application palette in step with the OS colour scheme."""
 
-    def __init__(self, app, parent=None):
+    def __init__(self, app, parent=None, theme_getter=None):
         super().__init__(parent)
         self._app = app
+        # returns the user's saved choice ("system"/"light"/"dark"); when it is
+        # None or missing we simply follow the operating system. Passed in
+        # rather than reading the settings directly, so this stays decoupled
+        # from the settings model and works before the settings even exist.
+        self._theme_getter = theme_getter
         # remember how the platform styled us before we touched anything, so
         # switching back to light restores the real native look
         self._native_style = app.style().objectName()
@@ -197,6 +259,14 @@ class ThemeManager(QObject):
         self._timer = None
         # windows whose title bar we have already switched, keyed by window id
         self._styled_titlebars = {}
+
+    def _configured_choice(self):
+        if self._theme_getter is None:
+            return SYSTEM
+        try:
+            return self._theme_getter() or SYSTEM
+        except Exception:  # noqa: BLE001 - a bad getter must never break theming
+            return SYSTEM
 
     @property
     def applied_theme(self):
@@ -247,8 +317,8 @@ class ThemeManager(QObject):
         self._app.setPalette(self._native_palette)
 
     def sync_with_system(self):
-        """Detect the current preference and apply it."""
-        theme = detect_system_theme()
+        """Apply the theme the user asked for, or the OS one when set to system."""
+        theme = resolve_theme(self._configured_choice())
         if theme is not None:
             self.apply(theme)
         # catches windows opened since the last check
@@ -274,9 +344,13 @@ class ThemeManager(QObject):
             self._timer = None
 
 
-def install(app, watch=True):
-    """Apply the system theme to app and optionally keep following it."""
-    manager = ThemeManager(app)
+def install(app, watch=True, theme_getter=None):
+    """Apply the chosen theme to app and optionally keep following it.
+
+    theme_getter, when given, returns the saved choice; without it the app
+    simply follows the operating system, as it always did.
+    """
+    manager = ThemeManager(app, theme_getter=theme_getter)
     manager.sync_with_system()
     if watch:
         manager.start_watching()

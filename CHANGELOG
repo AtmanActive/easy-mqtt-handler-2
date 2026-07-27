@@ -1,3 +1,17 @@
+# Version 2.1.0
+[Feature] The Connection tab has a Theme setting at the bottom, with three choices: "system", "light"
+          and "dark". "system" follows the operating system, as before; "light" and "dark" force that
+          look regardless of the desktop setting. The choice is saved to default-settings.json and takes
+          effect immediately, without a restart. A settings file with no theme value is understood as
+          "system", so nothing changes for existing configurations.
+
+# Version 2.0.9
+[Fix] Dark mode is now detected on the Cinnamon and MATE desktops. Detection only looked at the GNOME
+      settings, which on Cinnamon do not reflect the actual theme, so the app stayed light there even
+      with the desktop in dark mode. It now reads each desktop's own setting, most authoritative first:
+      the Cinnamon and MATE theme names, then the GNOME color-scheme, then the GNOME theme name. KDE was
+      already correct because Qt themes the app there directly, and Windows is unaffected.
+
 # Version 2.0.8
 [Feature] The About Program window now credits the authors: "Developed by A. Zeil, version 2 by
           AtmanActive."

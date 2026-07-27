@@ -44,6 +44,39 @@ def test_settings_absent_keys_are_none(tmp_path):
     assert settings.server_certificate_file is None
 
 
+def test_theme_defaults_to_system_when_absent(tmp_path):
+    # every settings file written before this option has no theme key
+    settings_file = tmp_path / "mqtt.json"
+    settings_file.write_text(json.dumps({"hostname": "broker.example.org"}), encoding="utf-8")
+
+    assert MQTTSettings(str(settings_file)).theme == "system"
+
+
+@pytest.mark.parametrize("choice", ["system", "light", "dark"])
+def test_theme_reads_back_a_valid_choice(tmp_path, choice):
+    settings_file = tmp_path / "mqtt.json"
+    settings_file.write_text(json.dumps({"theme": choice}), encoding="utf-8")
+
+    assert MQTTSettings(str(settings_file)).theme == choice
+
+
+def test_an_unfamiliar_theme_value_is_treated_as_system(tmp_path):
+    # a hand-edited file could hold anything; it must not break theming
+    settings_file = tmp_path / "mqtt.json"
+    settings_file.write_text(json.dumps({"theme": "chartreuse"}), encoding="utf-8")
+
+    assert MQTTSettings(str(settings_file)).theme == "system"
+
+
+def test_theme_round_trips_through_save(tmp_path):
+    settings_file = tmp_path / "mqtt.json"
+    settings = MQTTSettings(str(settings_file))
+    settings.refresh_settings({"hostname": "localhost", "theme": "dark"})
+
+    assert settings.save_settings() is True
+    assert json.loads(settings_file.read_text(encoding="utf-8"))["theme"] == "dark"
+
+
 def test_settings_ssl_flags_default_to_false_on_missing_file(tmp_path):
     # a fresh install has no settings file at all
     settings = MQTTSettings(str(tmp_path / "not-created-yet.json"))

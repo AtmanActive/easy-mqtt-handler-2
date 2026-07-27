@@ -110,6 +110,18 @@ class MQTTSettings(object):
     def allow_insecure_ssl(self, value):
         self.allow_insecure_ssl = value
 
+    @property
+    def theme(self):
+        # "system", "light" or "dark"; an absent or unfamiliar value (which is
+        # what every settings file written before this option holds) means the
+        # app follows the operating system
+        value = self.get_property('theme')
+        return value if value in ("system", "light", "dark") else "system"
+
+    @theme.setter
+    def theme(self, value):
+        self.theme = value
+
     _instance = None
     _filename = ""
     _settings = {}
