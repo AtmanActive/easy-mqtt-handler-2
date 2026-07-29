@@ -49,8 +49,12 @@ def test_tables_carry_no_style_sheet(app, tmp_path):
     MQTTPayloads(str(tmp_path / "payloads.json"))
     MQTTStartupMessages(str(tmp_path / "startup.json"))
 
-    assert PayloadTabWidget().table.styleSheet() == ""
-    assert StartupTabWidget().table.styleSheet() == ""
+    # references are held: PyQt5 frees the C++ widget the moment its Python
+    # wrapper is collected, so a bare PayloadTabWidget().table would dangle
+    payload_tab = PayloadTabWidget()
+    startup_tab = StartupTabWidget()
+    assert payload_tab.table.styleSheet() == ""
+    assert startup_tab.table.styleSheet() == ""
 
 
 def test_tables_have_extra_row_height(app, tmp_path):
@@ -61,5 +65,8 @@ def test_tables_have_extra_row_height(app, tmp_path):
     MQTTStartupMessages(str(tmp_path / "startup.json"))
     tab = StartupTabWidget()
 
-    default = QTableWidget().verticalHeader().defaultSectionSize()
+    # held so it is not garbage-collected before defaultSectionSize() is read,
+    # which otherwise segfaults on macOS
+    reference_table = QTableWidget()
+    default = reference_table.verticalHeader().defaultSectionSize()
     assert tab.table.verticalHeader().defaultSectionSize() == default + 2 * CELL_PADDING
