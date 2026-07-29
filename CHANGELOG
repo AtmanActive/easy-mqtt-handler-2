@@ -1,3 +1,8 @@
+# Version 2.1.2
+[Fix] The table headers on the Payload Handlers and Send on Startup tabs are left-aligned, so they line
+      up with the left-aligned data in the cells below. They used to be centred, which made it harder to
+      see which header belonged to which column.
+
 # Version 2.1.1
 [Fix] On Linux the disk built-ins no longer list separate mountpoints such as /home and /boot as if
       they were disks. Every partition or subvolume of one physical disk is now collapsed into a single

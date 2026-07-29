@@ -89,6 +89,8 @@ class StartupTabWidget(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.table.horizontalHeader().setStretchLastSection(True)
+        # left-align the header labels to line up with the left-aligned cell data
+        self.table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
     def setting_changed_event(self, _ignored=None):
         # ignore the churn of rebuilding the table from saved data
