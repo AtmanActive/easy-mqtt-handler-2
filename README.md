@@ -39,7 +39,7 @@ This repository is a fork and continuation of the awesome [Easy MQTT Handler](ht
 # Purpose of this tool
 
 Easy MQTT Handler was mainly developed to provide an easy way to integrate Personal Computers into Home Automation. The tool
-offers a simple, but functional, GUI to connect to an MQTT Broker and listen to a topic. 
+offers a simple, but functional, GUI to connect to an MQTT Broker and listen to a topic or send some data into a topic. 
 
 The user is able to define commands and parameters that should be part of the payload of the MQTT messages received from
 the broker. For each command/parameter combination the user can then define an executable that should be launched 
@@ -50,7 +50,7 @@ The tool is neatly integrating into the users' environment by sitting in the tra
 # Using this tool
 
 The first time you start Easy MQTT Handler 2 you will see the main application window. It's featuring a tabbed interface
-with 3 tabs, a toolbar and a statusbar.
+with 4 tabs, a toolbar and a statusbar.
 
 ## Connection tab
 
@@ -104,21 +104,21 @@ $3` will be removed from the command line arguments automatically, in order to n
 ## Send on Startup tab
 
 While the [Payload Handlers tab](#payload-handlers-tab) defines what happens when a message *arrives*, this tab
-defines messages the tool *sends* by itself. Everything listed here is published as soon as a connection to the
+defines messages the tool *sends* by itself on startup. Everything listed here is published as soon as a connection to the
 broker has been established, just before the tool starts listening.
 
-Leave the tab empty and nothing is sent, which is exactly how the tool behaved before this feature existed.
+Leave the tab empty and nothing is sent.
 
 The typical use is letting each of your machines announce or configure its own entities in Home Assistant
-whenever it comes online, so a desktop and a laptop can each set up what belongs to them, or a multi-boot machine can announce which operating system is currently running.
+whenever it comes online, so a desktop and a laptop can each set up what belongs to them, or a multi-boot machine can announce which operating system is currently running, and so on.
 
 Every row is one message:
 
 | Column | Meaning |
 |---|---|
 | **Topic** | The MQTT topic to publish to. This is an **absolute** topic and is *not* prefixed with the topic from the Connection tab, because you are usually addressing some other device's entity. |
-| **Type** | How the Payload should be read: `literal`, `command` or `built-in`. See below. |
-| **Payload** | What to send. What this means depends on the Type. |
+| **Type** | How the Payload should be read: `literal`, `command`, `built-in` or `environment`. See below. |
+| **Payload** | What to send. What this means depends on the Type. See below. |
 | **QoS** | Quality of Service, `0`, `1` or `2`. Leave it at `0` if you have no reason to change it. |
 | **Retain** | Ask the broker to remember this message and deliver it to anyone subscribing later. Home Assistant usually wants this on for configuration messages. |
 | **HA Entity** | Which kind of Home Assistant entity to create. Defaults to `sensor`. Optional, see below. |
@@ -132,14 +132,13 @@ on the Payload Handlers tab. Rows without a topic are ignored, so a half-finishe
 
 The **Type** column decides what the Payload means:
 
-* **literal** — the Payload is sent exactly as you typed it. This is the normal case, and what every row did
-  before this option existed.
-* **environment** — the Payload is the name of an environment variable, and its value is sent. If the variable
+* **literal** — the Payload is sent exactly as you typed it. This is the normal case.
+* **environment** — the Payload should be the name of an environment variable, and its value is sent. If the variable
   is not set, or is set but empty, the row is quietly skipped with a line in the [Logs tab](#logs-tab). The
   value is sent as-is; only the variable name is trimmed of surrounding spaces.
-* **command** — the Payload is the path to a program. When the messages are sent, that program is run and its
-  output becomes the payload. This lets you report anything you can write a small script for. A relative path is
-  looked for next to the [configuration](#configuration-files); an absolute path is used as-is. If the program
+* **command** — the Payload should be the path to a program. When the messages are sent, that program is run and its
+  output becomes the payload. This lets you report anything you can write a small script for. You can use both a relative path, which is
+  looked for next to the [configuration](#configuration-files), or an absolute path which is then used as-is. If the program
   does not exist, or produces no output, the row is quietly skipped and a line explaining why appears in the
   [Logs tab](#logs-tab).
 * **built-in** — the Payload becomes a drop down of values the tool can work out for itself, without running
@@ -159,9 +158,8 @@ The **Type** column decides what the Payload means:
 
   The disk entries are discovered when the tool starts, so a machine with three disks adds eighteen of
   them. Network drives and empty removable drives are left out, and on Linux each physical disk appears
-  once however it is partitioned — a separate `/home` or `/boot` is part of its disk, not a disk of its
-  own. If a value refers to a disk that is not connected on this run — for instance a config made on a
-  machine with more disks — that row is simply skipped, with a note in the [Logs tab](#logs-tab).
+  once regardless of how it is partitioned. If a value refers to a disk that is not connected on this run, (for instance a config made on a
+  machine with more disks) then, that row is simply skipped, with a note in the [Logs tab](#logs-tab).
 
   The list is shown in alphabetical order, and more built-in values will be added over time.
 
@@ -171,12 +169,9 @@ again rather than repeating whatever they were at startup.
 
 ### Creating Home Assistant entities automatically
 
-Normally, getting a value from this tool into Home Assistant means editing YAML and restarting it. MQTT auto
-discovery avoids that: if you publish a small JSON description of an entity to a special topic, Home Assistant
-creates the entity immediately.
+Normally, getting a value from this tool into Home Assistant means editing YAML and restarting it. MQTT auto discovery avoids that: adding a small JSON description of an entity to a special topic makes Home Assistant create the entity immediately.
 
-This tool can do that for you. **Fill in HA ID on a row** and, just before sending that row's message, it also
-publishes a discovery message:
+This tool can do that for you. **Fill in HA ID on a row** and, just before sending that row's message, it will also publish a discovery message:
 
 	topic:   homeassistant/<HA Entity>/<HA ID>/config
 	payload: {"name": "<HA Name>", "state_topic": "<Topic>", "unique_id": "<HA ID>"}
@@ -186,8 +181,7 @@ HA Name `Dev Box Operating System` gives you the entity `sensor.dev_box_operatin
 pointed at the right topic. This is exactly what makes the "different desktops configure their own entities"
 idea work: each machine announces what belongs to it as it comes online.
 
-**Leave HA ID empty and nothing changes** — the row is published just like before. That is also true of every
-configuration made before this feature existed.
+**Leave HA ID empty to avoid creating the entity** - the row is published to MQTT with just one message (instead of two).
 
 A few details worth knowing:
 
@@ -199,10 +193,7 @@ A few details worth knowing:
 * **HA Entity** and **HA ID** both become part of a topic, so they may only contain letters, digits, underscores
   and hyphens. A row that breaks this rule is reported in the [Logs tab](#logs-tab) and skipped for discovery
   only — its own message is still sent.
-* **Removing a row does not remove the entity** from Home Assistant, because the retained discovery message is
-  still sitting on the broker. To delete one, add a row that publishes an *empty* Payload with **Retain** ticked
-  to that same `homeassistant/<HA Entity>/<HA ID>/config` topic, leave HA ID blank on it, and start the tool
-  once. Then delete that row too.
+* **Removing a row does not remove the entity** from Home Assistant, because the retained discovery message is still sitting on the broker. To delete one, add a row that publishes an *empty* Payload with **Retain** ticked to that same `homeassistant/<HA Entity>/<HA ID>/config` topic, leave HA ID blank on it, and start the tool once. Then delete that row too.
 
 These messages are stored separately from everything else, in `default-startup-messages.json`, next to the other
 configuration files.
