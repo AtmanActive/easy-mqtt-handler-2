@@ -153,9 +153,10 @@ The **Type** column decides what the Payload means:
   | Disks | for each connected disk: `disks: disk N name`, `total size B`, `used size B`, `free size B`, `used percentage`, `free percentage` |
 
   The disk entries are discovered when the tool starts, so a machine with three disks adds eighteen of
-  them. Network drives and empty removable drives are left out. If a value refers to a disk that is not
-  connected on this run — for instance a config made on a machine with more disks — that row is simply
-  skipped, with a note in the [Logs tab](#logs-tab).
+  them. Network drives and empty removable drives are left out, and on Linux each physical disk appears
+  once however it is partitioned — a separate `/home` or `/boot` is part of its disk, not a disk of its
+  own. If a value refers to a disk that is not connected on this run — for instance a config made on a
+  machine with more disks — that row is simply skipped, with a note in the [Logs tab](#logs-tab).
 
   The list is shown in alphabetical order, and more built-in values will be added over time.
 

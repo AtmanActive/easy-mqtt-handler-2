@@ -252,21 +252,73 @@ def _discover_windows_drives():
     return drives
 
 
+def _physical_disk_of(device):
+    """The physical disk a block device belongs to, e.g. /dev/sda2 -> /dev/sda.
+
+    A partition, or a btrfs subvolume, of one disk maps back to that disk, so
+    that a partition such as /home is not reported as a disk of its own. A whole
+    disk, an LVM volume, or anything unrecognised is returned unchanged and so
+    counts as its own disk.
+    """
+    if not device.startswith("/dev/"):
+        return device
+
+    name = device[len("/dev/"):]
+    # nvme0n1p2, mmcblk0p1: the disk name ends in a digit, so a partition is
+    # marked off with a "p"
+    match = re.match(r"^([a-z]+\d+(?:n\d+)?)p\d+$", name)
+    if match:
+        return "/dev/" + match.group(1)
+    # sda2, vdb3, hda1: the disk name ends in letters, so the partition is just
+    # the trailing number
+    match = re.match(r"^([a-z]+)\d+$", name)
+    if match:
+        return "/dev/" + match.group(1)
+    return device
+
+
+def _parse_proc_mounts(text):
+    """Parse /proc/mounts into (mountpoint, device, filesystem) rows."""
+    rows = []
+    for line in text.splitlines():
+        parts = line.split()
+        if len(parts) < 3:
+            continue
+        rows.append((_unescape_proc_mount(parts[1]), parts[0], parts[2]))
+    return rows
+
+
+def _real_disk_mounts(rows):
+    """One mountpoint per physical disk, from parsed /proc/mounts rows.
+
+    Only filesystems that live on a real block device are considered, which
+    drops pseudo, network and bind-style mounts. Every partition or subvolume of
+    a single physical disk is collapsed to one entry, represented by its
+    root-most mountpoint, so that a disk shows up once no matter how it is
+    carved up.
+    """
+    chosen = {}
+    for mountpoint, device, filesystem in rows:
+        if filesystem not in _LINUX_LOCAL_FILESYSTEMS:
+            continue
+        # a real disk is mounted from a /dev node; a bind mount or a pseudo
+        # filesystem is not
+        if not device.startswith("/dev/"):
+            continue
+        disk = _physical_disk_of(device)
+        current = chosen.get(disk)
+        if current is None or len(mountpoint) < len(current):
+            chosen[disk] = mountpoint
+    return [(mountpoint, mountpoint) for mountpoint in sorted(chosen.values())]
+
+
 def _discover_linux_mounts():
-    mounts = []
     try:
         with open("/proc/mounts", "r", encoding="utf-8", errors="replace") as handle:
-            for line in handle:
-                parts = line.split()
-                if len(parts) < 3:
-                    continue
-                mountpoint = _unescape_proc_mount(parts[1])
-                filesystem = parts[2]
-                if filesystem in _LINUX_LOCAL_FILESYSTEMS:
-                    mounts.append((mountpoint, mountpoint))
+            text = handle.read()
     except OSError:
-        pass
-    return mounts
+        return []
+    return _real_disk_mounts(_parse_proc_mounts(text))
 
 
 def _discover_macos_mounts():

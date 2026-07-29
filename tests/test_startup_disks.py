@@ -178,3 +178,123 @@ def test_the_same_filesystem_is_not_listed_twice(monkeypatch):
     monkeypatch.setattr(sp.os, "stat", lambda _p: _Stat())
 
     assert len(sp.discover_disks()) == 1
+
+
+# --- Linux: only real physical disks, not every mountpoint ------------------
+
+@pytest.mark.parametrize("device,expected", [
+    ("/dev/sda1", "/dev/sda"),
+    ("/dev/sda2", "/dev/sda"),
+    ("/dev/sdb3", "/dev/sdb"),
+    ("/dev/sdab1", "/dev/sdab"),          # more than 26 disks
+    ("/dev/vda1", "/dev/vda"),            # virtio
+    ("/dev/hda1", "/dev/hda"),            # old IDE
+    ("/dev/nvme0n1p2", "/dev/nvme0n1"),   # NVMe
+    ("/dev/nvme1n1p12", "/dev/nvme1n1"),
+    ("/dev/mmcblk0p1", "/dev/mmcblk0"),   # SD / eMMC
+    ("/dev/sda", "/dev/sda"),             # whole disk, unchanged
+    ("/dev/nvme0n1", "/dev/nvme0n1"),     # whole NVMe disk, unchanged
+    ("/dev/mapper/vg-root", "/dev/mapper/vg-root"),  # LVM: its own disk
+    ("/dev/dm-0", "/dev/dm-0"),
+])
+def test_partition_maps_to_its_physical_disk(device, expected):
+    assert sp._physical_disk_of(device) == expected
+
+
+# a realistic /proc/mounts with pseudo filesystems, a separate /home and /boot,
+# an EFI partition, and a couple of snap loops
+PROC_MOUNTS_SEPARATE_HOME = """\
+sysfs /sys sysfs rw 0 0
+proc /proc proc rw 0 0
+udev /dev devtmpfs rw 0 0
+tmpfs /run tmpfs rw 0 0
+/dev/sda2 / ext4 rw,relatime 0 0
+/dev/sda3 /home ext4 rw,relatime 0 0
+/dev/sda1 /boot/efi vfat rw,relatime 0 0
+tmpfs /dev/shm tmpfs rw 0 0
+/dev/loop0 /snap/core/1234 squashfs ro 0 0
+/dev/loop1 /snap/firefox/567 squashfs ro 0 0
+cgroup2 /sys/fs/cgroup cgroup2 rw 0 0
+"""
+
+
+def test_a_single_disk_with_a_separate_home_is_one_disk():
+    disks = sp._real_disk_mounts(sp._parse_proc_mounts(PROC_MOUNTS_SEPARATE_HOME))
+
+    # /, /home and /boot/efi are all partitions of /dev/sda -> one disk, shown
+    # by its root-most mountpoint
+    assert disks == [("/", "/")]
+
+
+# btrfs: / and /home are subvolumes of the same partition
+PROC_MOUNTS_BTRFS_SUBVOLUMES = """\
+/dev/nvme0n1p2 / btrfs rw,subvol=/@ 0 0
+/dev/nvme0n1p2 /home btrfs rw,subvol=/@home 0 0
+/dev/nvme0n1p1 /boot/efi vfat rw 0 0
+proc /proc proc rw 0 0
+"""
+
+
+def test_btrfs_subvolumes_collapse_to_one_disk():
+    disks = sp._real_disk_mounts(sp._parse_proc_mounts(PROC_MOUNTS_BTRFS_SUBVOLUMES))
+
+    assert disks == [("/", "/")]
+
+
+# two genuinely separate physical disks
+PROC_MOUNTS_TWO_DISKS = """\
+/dev/sda1 / ext4 rw 0 0
+/dev/sdb1 /mnt/data ext4 rw 0 0
+proc /proc proc rw 0 0
+"""
+
+
+def test_two_physical_disks_are_both_reported():
+    disks = sp._real_disk_mounts(sp._parse_proc_mounts(PROC_MOUNTS_TWO_DISKS))
+
+    assert disks == [("/", "/"), ("/mnt/data", "/mnt/data")]
+
+
+def test_a_usb_stick_on_its_own_device_is_a_disk():
+    rows = sp._parse_proc_mounts(
+        "/dev/sda2 / ext4 rw 0 0\n"
+        "/dev/sdc1 /media/user/USB exfat rw 0 0\n")
+
+    disks = sp._real_disk_mounts(rows)
+
+    assert ("/media/user/USB", "/media/user/USB") in disks
+    assert len(disks) == 2
+
+
+def test_bind_and_pseudo_mounts_are_ignored():
+    rows = sp._parse_proc_mounts(
+        "/dev/sda1 / ext4 rw 0 0\n"
+        "tmpfs /tmp tmpfs rw 0 0\n"
+        "proc /proc proc rw 0 0\n"
+        "overlay /var/lib/docker/overlay2/x overlay rw 0 0\n"
+        "/dev/sda1 /var/bind ext4 rw,bind 0 0\n")  # bind of the same device
+
+    disks = sp._real_disk_mounts(rows)
+
+    # only the one physical disk, once
+    assert disks == [("/", "/")]
+
+
+def test_the_root_most_mountpoint_represents_the_disk():
+    # a data disk mounted only below /mnt is represented by its shortest path
+    rows = sp._parse_proc_mounts(
+        "/dev/sdb2 /mnt/data ext4 rw 0 0\n"
+        "/dev/sdb1 /mnt/data/nested ext4 rw 0 0\n")
+
+    disks = sp._real_disk_mounts(rows)
+
+    assert disks == [("/mnt/data", "/mnt/data")]
+
+
+def test_proc_mounts_that_cannot_be_read_yields_nothing(monkeypatch):
+    def _raise(*_a, **_k):
+        raise OSError("no /proc here")
+
+    monkeypatch.setattr("builtins.open", _raise)
+    # _discover_linux_mounts must swallow the error
+    assert sp._discover_linux_mounts() == []

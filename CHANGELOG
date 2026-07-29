@@ -1,3 +1,10 @@
+# Version 2.1.1
+[Fix] On Linux the disk built-ins no longer list separate mountpoints such as /home and /boot as if
+      they were disks. Every partition or subvolume of one physical disk is now collapsed into a single
+      entry, represented by its root-most mountpoint, so a disk appears once however it is partitioned.
+      Two genuinely separate physical disks are still reported separately, and Windows and macOS are
+      unaffected.
+
 # Version 2.1.0
 [Feature] The Connection tab has a Theme setting at the bottom, with three choices: "system", "light"
           and "dark". "system" follows the operating system, as before; "light" and "dark" force that
