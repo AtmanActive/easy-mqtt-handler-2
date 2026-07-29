@@ -12,7 +12,7 @@ import json
 import os
 import re
 
-from easy_mqtt_handler.util.StartupPayload import DEFAULT_TYPE, PAYLOAD_TYPES
+from easy_mqtt_handler.util.StartupPayload import DEFAULT_TYPE, PAYLOAD_TYPES, TYPE_REMOVE_HA_ENTITY
 
 # a message the user has not filled in a topic for cannot be published
 REQUIRED_FIELD = "topic"
@@ -95,17 +95,31 @@ class MQTTStartupMessages(object):
             return False
 
     def publishable_messages(self):
-        """Return only the entries that can actually be sent.
+        """Return only the entries that can actually be acted on.
 
         Rows are created empty when the user clicks Add, and a half-filled row
-        should never reach the broker, so anything without a topic is skipped.
+        should never reach the broker. An ordinary row needs a topic; a
+        removal row ignores the topic and is driven by its HA ID instead, so it
+        needs that.
         """
         messages = []
         for item in self._startup_data:
             if not isinstance(item, dict):
                 continue
+
+            # how the payload should be interpreted; an unfamiliar value (or an
+            # older config with none) falls back to a plain literal
+            payload_type = str(item.get("type", DEFAULT_TYPE))
+            if payload_type not in PAYLOAD_TYPES:
+                payload_type = DEFAULT_TYPE
+
             topic = str(item.get(REQUIRED_FIELD, "")).strip()
-            if topic == "":
+            ha_id = str(item.get("ha_id", "")).strip()
+            if payload_type == TYPE_REMOVE_HA_ENTITY:
+                # the topic is ignored; the entity to remove comes from HA ID
+                if ha_id == "":
+                    continue
+            elif topic == "":
                 continue
 
             qos = item.get("qos", 0)
@@ -115,12 +129,6 @@ class MQTTStartupMessages(object):
                 qos = 0
             if qos not in VALID_QOS_LEVELS:
                 qos = 0
-
-            # how the payload should be interpreted; an unfamiliar value (or an
-            # older config with none) falls back to a plain literal
-            payload_type = str(item.get("type", DEFAULT_TYPE))
-            if payload_type not in PAYLOAD_TYPES:
-                payload_type = DEFAULT_TYPE
 
             messages.append({
                 "topic": topic,
@@ -174,3 +182,25 @@ def discovery_for(message):
         # Home Assistant the next time it restarts
         "retain": True,
     }
+
+
+def ha_removal_topic(message):
+    """The discovery config topic to clear in order to remove an entity.
+
+    Home Assistant deletes an entity when its retained discovery config is
+    cleared, so removal means publishing an empty retained payload to exactly
+    the topic discovery_for() would have used. Returns (topic, None), or
+    (None, reason) when the row does not name a usable entity. Only HA Entity
+    and HA ID are read; every other field on the row is ignored.
+    """
+    ha_id = str(message.get("ha_id", "")).strip()
+    if ha_id == "":
+        return None, "no HA ID given"
+    if not HA_IDENTIFIER_PATTERN.match(ha_id):
+        return None, f"\"{ha_id}\" is not a usable HA ID"
+
+    component = str(message.get("ha_entity", "")).strip() or HA_DEFAULT_COMPONENT
+    if not HA_IDENTIFIER_PATTERN.match(component):
+        return None, f"\"{component}\" is not a usable HA Entity"
+
+    return f"{HA_DISCOVERY_PREFIX}/{component}/{ha_id}/config", None

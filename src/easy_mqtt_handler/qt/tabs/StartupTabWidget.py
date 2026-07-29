@@ -12,12 +12,14 @@ import gettext
 
 from PyQt5 import QtGui
 from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtGui import QBrush, QColor
 from PyQt5.QtWidgets import QWidget, QTableWidget, QAbstractItemView, QPushButton, QVBoxLayout, QHBoxLayout, \
     QHeaderView, QSizePolicy, QTableWidgetItem, QComboBox, QLabel
 
 from easy_mqtt_handler.util.MQTTStartupMessages import MQTTStartupMessages, VALID_QOS_LEVELS, \
     HA_COMMON_COMPONENTS, HA_DEFAULT_COMPONENT
-from easy_mqtt_handler.util.StartupPayload import PAYLOAD_TYPES, DEFAULT_TYPE, TYPE_BUILTIN, builtin_keys
+from easy_mqtt_handler.util.StartupPayload import PAYLOAD_TYPES, DEFAULT_TYPE, TYPE_BUILTIN, \
+    TYPE_REMOVE_HA_ENTITY, builtin_keys
 from easy_mqtt_handler.util.Tools import Utils
 
 # Set the local directory
@@ -35,6 +37,13 @@ COLUMN_RETAIN = 4
 COLUMN_HA_ENTITY = 5
 COLUMN_HA_ID = 6
 COLUMN_HA_NAME = 7
+
+# a red-tinted white, so a removal row stands out as something that is meant to
+# make a change happen
+REMOVAL_TEXT_COLOR = QColor(255, 120, 120)
+
+# a little more room in every cell and header, for readability
+CELL_PADDING = 3
 
 
 class StartupTabWidget(QWidget):
@@ -56,7 +65,9 @@ class StartupTabWidget(QWidget):
                              "Type decides how Payload is read: \"literal\" sends it as-is, \"command\" runs it "
                              "as a program and sends its output, \"built-in\" sends a value this program works "
                              "out itself, \"environment\" sends the value of an environment variable.\n"
-                             "Fill in HA ID to have Home Assistant create an entity for the message automatically."))
+                             "Fill in HA ID to have Home Assistant create an entity for the message automatically. "
+                             "The \"remove_ha_entity\" type instead removes the entity named by HA Entity and HA ID "
+                             "(shown in red); the row deletes itself once the broker confirms the removal."))
         self.hint.setWordWrap(True)
 
         # create the table
@@ -91,6 +102,10 @@ class StartupTabWidget(QWidget):
         self.table.horizontalHeader().setStretchLastSection(True)
         # left-align the header labels to line up with the left-aligned cell data
         self.table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        # a few pixels of breathing room in the cells and the header
+        self.table.setStyleSheet(
+            f"QTableWidget::item {{ padding: {CELL_PADDING}px; }}"
+            f" QHeaderView::section {{ padding: {CELL_PADDING}px; }}")
 
     def setting_changed_event(self, _ignored=None):
         # ignore the churn of rebuilding the table from saved data
@@ -154,7 +169,32 @@ class StartupTabWidget(QWidget):
             self.table.setCellWidget(row, COLUMN_PAYLOAD, selector)
             selector.currentTextChanged.connect(self.setting_changed_event)
         else:
+            # literal, command, environment and remove_ha_entity are all free
+            # text (the last one ignores it, but keeps a cell for consistency)
             self.table.setItem(row, COLUMN_PAYLOAD, QTableWidgetItem(payload))
+
+    def style_row(self, row, payload_type):
+        """Colour a removal row so it stands out from ordinary rows."""
+        is_removal = payload_type == TYPE_REMOVE_HA_ENTITY
+
+        for column in (COLUMN_TOPIC, COLUMN_PAYLOAD, COLUMN_HA_ID, COLUMN_HA_NAME):
+            item = self.table.item(row, column)
+            if item is None:
+                continue
+            if is_removal:
+                item.setForeground(REMOVAL_TEXT_COLOR)
+            else:
+                # clear any colour a previous type left behind, back to default
+                item.setData(Qt.ForegroundRole, None)
+
+        # the drop downs are cell widgets, so their text colour comes from a
+        # style sheet rather than the item foreground
+        combo_style = f"color: rgb({REMOVAL_TEXT_COLOR.red()}, {REMOVAL_TEXT_COLOR.green()}, " \
+                      f"{REMOVAL_TEXT_COLOR.blue()});" if is_removal else ""
+        for column in (COLUMN_TYPE, COLUMN_QOS, COLUMN_HA_ENTITY, COLUMN_PAYLOAD):
+            widget = self.table.cellWidget(row, column)
+            if isinstance(widget, QComboBox):
+                widget.setStyleSheet(combo_style)
 
     def on_type_changed(self, row):
         # rebuild the payload cell for the new type, carrying the old value over
@@ -162,6 +202,7 @@ class StartupTabWidget(QWidget):
         try:
             payload_type = self.type_value(row)
             self.set_payload_cell(row, payload_type, self.payload_value(row))
+            self.style_row(row, payload_type)
         finally:
             self._suspend_changes = False
         self.setting_changed_event()
@@ -201,6 +242,8 @@ class StartupTabWidget(QWidget):
         self.make_component_selector(row, ha_entity)
         self.table.setItem(row, COLUMN_HA_ID, QTableWidgetItem(ha_id))
         self.table.setItem(row, COLUMN_HA_NAME, QTableWidgetItem(ha_name))
+
+        self.style_row(row, payload_type)
 
     def add_message(self):
         self.add_data("", "", 0, False)
@@ -244,7 +287,12 @@ class StartupTabWidget(QWidget):
 
         MQTTStartupMessages.get_instance().startup_data = new_startup_data
 
-    def showEvent(self, a0: QtGui.QShowEvent) -> None:
+    def reload_from_settings(self):
+        """Rebuild the table from the saved startup data.
+
+        Used both when the tab is shown and after the app deletes a confirmed
+        removal row, so the table stays in step with the configuration.
+        """
         # unbind dataChanged event until we've loaded the new startup data
         try:
             self.table.model().dataChanged.disconnect()
@@ -275,3 +323,6 @@ class StartupTabWidget(QWidget):
 
         # now that we've loaded data: enable listening to dataChanged event and send a signal on changes
         self.table.model().dataChanged.connect(self.setting_changed_event)
+
+    def showEvent(self, a0: QtGui.QShowEvent) -> None:
+        self.reload_from_settings()

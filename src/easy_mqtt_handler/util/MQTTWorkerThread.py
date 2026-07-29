@@ -19,8 +19,9 @@ from paho.mqtt.client import ssl
 
 from easy_mqtt_handler.util.MQTTPayloads import MQTTPayloads
 from easy_mqtt_handler.util.MQTTSettings import MQTTSettings
-from easy_mqtt_handler.util.MQTTStartupMessages import MQTTStartupMessages, DiscoveryError, discovery_for
-from easy_mqtt_handler.util.StartupPayload import resolve_startup_payload
+from easy_mqtt_handler.util.MQTTStartupMessages import MQTTStartupMessages, DiscoveryError, discovery_for, \
+    ha_removal_topic
+from easy_mqtt_handler.util.StartupPayload import resolve_startup_payload, TYPE_REMOVE_HA_ENTITY
 from easy_mqtt_handler.util.Tools import Utils
 
 # Set the local directory
@@ -61,6 +62,9 @@ class MQTTWorkerThread(QThread):
     add_log_line = pyqtSignal(str)
     # create a signal for track status and controlling the MainWindow GUI
     track_status = pyqtSignal(int)
+    # emitted with a discovery config topic once the broker has confirmed the
+    # entity's removal, so the GUI can delete the row that asked for it
+    ha_entity_removal_confirmed = pyqtSignal(str)
 
     client = mqtt.Client()
     settings: MQTTSettings
@@ -140,6 +144,12 @@ class MQTTWorkerThread(QThread):
         search_dirs = [Utils.get_config_path(), os.getcwd()]
 
         for message in messages:
+            # a removal row is an action, not a message to publish, so it is
+            # handled on its own before the normal payload path
+            if message["type"] == TYPE_REMOVE_HA_ENTITY:
+                self.send_ha_entity_removal(client, message)
+                continue
+
             # work out what to actually publish: a literal, a command's output,
             # or a built-in value. a row that cannot produce one is skipped.
             payload, note = resolve_startup_payload(message, search_dirs)
@@ -173,6 +183,48 @@ class MQTTWorkerThread(QThread):
                     .format(message["topic"], error))
 
         self.add_log_line.emit(_("All startup messages sent."))
+
+    def send_ha_entity_removal(self, client, message):
+        """Ask Home Assistant to remove the entity named by a removal row.
+
+        Removal is an empty retained payload on the entity's discovery config
+        topic. It is sent at QoS 1 so the broker acknowledges it with a PUBACK;
+        on_publish then treats that acknowledgement as confirmation and asks the
+        GUI to delete the row. Without the acknowledgement the row is left in
+        place, to be retried on the next connection.
+        """
+        topic, error = ha_removal_topic(message)
+        if topic is None:
+            self.add_log_line.emit(
+                _("Can't remove Home Assistant entity: {0}").format(error))
+            return
+
+        try:
+            # empty payload clears the retained config; retain=True so the
+            # cleared state itself sticks; QoS 1 so we get a PUBACK to confirm
+            result = client.publish(topic, "", qos=1, retain=True)
+            if result.rc != mqtt.MQTT_ERR_SUCCESS:
+                self.add_log_line.emit(
+                    _("Couldn't send Home Assistant removal to topic \"{0}\" (error {1}).")
+                    .format(topic, result.rc))
+                return
+
+            self._pending_removals[result.mid] = topic
+            self.add_log_line.emit(
+                _("Requested removal of a Home Assistant entity via topic \"{0}\".").format(topic))
+        except (ValueError, OSError) as error:
+            self.add_log_line.emit(
+                _("Couldn't send Home Assistant removal to topic \"{0}\": {1}").format(topic, error))
+
+    def on_publish(self, client, userdata, mid):
+        # only removal messages are tracked here; a PUBACK for one is the broker
+        # confirming the retained config has been cleared, which is what removes
+        # the entity
+        topic = self._pending_removals.pop(mid, None)
+        if topic is not None:
+            self.add_log_line.emit(
+                _("Home Assistant entity removal confirmed for topic \"{0}\".").format(topic))
+            self.ha_entity_removal_confirmed.emit(topic)
 
     def router(self, data):
         mqtt_command = data.get("command")
@@ -227,6 +279,9 @@ class MQTTWorkerThread(QThread):
     def __init__(self):
         super().__init__()
         self.settings = MQTTSettings.get_instance()
+        # message ids of in-flight entity removals, mapped to their config topic,
+        # so a PUBACK can be matched back to the entity it confirms
+        self._pending_removals = {}
 
     def run(self):
         self.mqtt_connect()
@@ -236,11 +291,15 @@ class MQTTWorkerThread(QThread):
             return False
 
         self.client = mqtt.Client()
+        # a new client means any removals tracked against the old one are moot
+        self._pending_removals = {}
 
         if self.settings.hostname != "" and self.settings.port != "" and self.settings.topic != "":
             self.client.on_connect = self.on_connect
             self.client.on_message = self.on_message
             self.client.on_log = self.mqtt_log
+            # PUBACKs for the removal messages arrive here
+            self.client.on_publish = self.on_publish
             self.client.username_pw_set(self.settings.username, self.settings.password)
 
             tmp_pem_file = ""

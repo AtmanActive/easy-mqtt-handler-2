@@ -23,7 +23,7 @@ from easy_mqtt_handler.qt.tabs.StartupTabWidget import StartupTabWidget
 from easy_mqtt_handler.util.Icons import *
 from easy_mqtt_handler.util.MQTTPayloads import MQTTPayloads
 from easy_mqtt_handler.util.MQTTSettings import MQTTSettings
-from easy_mqtt_handler.util.MQTTStartupMessages import MQTTStartupMessages
+from easy_mqtt_handler.util.MQTTStartupMessages import MQTTStartupMessages, ha_removal_topic
 from easy_mqtt_handler.util.MQTTWorkerThread import MQTTWorkerThread
 from easy_mqtt_handler.util.Tools import Utils
 
@@ -112,6 +112,7 @@ class MainWindow(QMainWindow):
         self.worker_thread = MQTTWorkerThread()
         self.worker_thread.add_log_line.connect(self.add_log_line)
         self.worker_thread.track_status.connect(self.track_status)
+        self.worker_thread.ha_entity_removal_confirmed.connect(self.on_ha_entity_removal_confirmed)
 
         # start the worker thread
         self.worker_thread.start()
@@ -263,6 +264,28 @@ class MainWindow(QMainWindow):
         # whole application straight away
         if self.font_manager is not None:
             self.font_manager.apply_configured()
+
+    def on_ha_entity_removal_confirmed(self, topic):
+        # the broker confirmed the entity's removal, so drop every remove_ha_entity
+        # row that targeted it, save, and refresh the tab if it is open
+        store = MQTTStartupMessages.get_instance()
+        remaining = []
+        removed = False
+        for row in store.startup_data:
+            if row.get("type") == "remove_ha_entity":
+                row_topic, _error = ha_removal_topic(row)
+                if row_topic == topic:
+                    removed = True
+                    continue
+            remaining.append(row)
+
+        if not removed:
+            return
+
+        store.startup_data = remaining
+        store.save_startup_data()
+        self.startup_editor.reload_from_settings()
+        self.add_log_line(_("Removed the completed removal row for topic \"{0}\".").format(topic))
 
     def on_connect_action(self):
         if self.worker_thread.mqtt_connect():

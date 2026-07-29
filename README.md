@@ -162,8 +162,11 @@ The **Type** column decides what the Payload means:
   machine with more disks) then, that row is simply skipped, with a note in the [Logs tab](#logs-tab).
 
   The list is shown in alphabetical order, and more built-in values will be added over time.
+* **remove_ha_entity** — not a value to send, but an action: it removes a Home Assistant entity you created
+  earlier. It uses only **HA Entity** and **HA ID**; every other field is ignored. See
+  [Removing a Home Assistant entity](#removing-a-home-assistant-entity) below. These rows are shown in red.
 
-Whichever type a row uses, the value is worked out **at the moment the messages are sent**, not when you save
+Whichever type a row uses (other than `remove_ha_entity`), the value is worked out **at the moment the messages are sent**, not when you save
 them. So if the connection drops and is re-established, the clock, the command output and the IP address are read
 again rather than repeating whatever they were at startup.
 
@@ -193,7 +196,26 @@ A few details worth knowing:
 * **HA Entity** and **HA ID** both become part of a topic, so they may only contain letters, digits, underscores
   and hyphens. A row that breaks this rule is reported in the [Logs tab](#logs-tab) and skipped for discovery
   only — its own message is still sent.
-* **Removing a row does not remove the entity** from Home Assistant, because the retained discovery message is still sitting on the broker. To delete one, add a row that publishes an *empty* Payload with **Retain** ticked to that same `homeassistant/<HA Entity>/<HA ID>/config` topic, leave HA ID blank on it, and start the tool once. Then delete that row too.
+* **Removing the row that created an entity does not remove the entity** from Home Assistant, because the
+  retained discovery message is still sitting on the broker. To delete the entity, use the
+  **remove_ha_entity** type described below.
+
+### Removing a Home Assistant entity
+
+To delete an entity you created earlier, add a row and set its **Type** to **remove_ha_entity**. Fill in
+**HA Entity** and **HA ID** so they match the entity you want gone — the same two values you used to create it.
+Everything else on the row is ignored, so leave Topic, Payload and the rest as they are.
+
+On the next connection the tool publishes the empty retained message that clears the entity's discovery config,
+which is exactly what removes it from Home Assistant — you no longer have to work out the special topic and
+payload yourself. Removal rows are shown in **red** so they stand out.
+
+If the broker confirms the removal, the tool **deletes the row for you**, from both the table and the saved
+configuration, so it does not keep firing. If the broker cannot confirm it, the row is left alone and tried
+again next time. You will see what happened in the [Logs tab](#logs-tab).
+
+> If you also still have the row that *created* the entity (the one with HA ID that publishes its value), remove
+> that one too, or it will simply recreate the entity on the next start.
 
 These messages are stored separately from everything else, in `default-startup-messages.json`, next to the other
 configuration files.

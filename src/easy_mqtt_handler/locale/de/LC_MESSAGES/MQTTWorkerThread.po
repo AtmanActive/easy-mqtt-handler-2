@@ -134,6 +134,26 @@ msgstr "Alle Startnachrichten gesendet."
 msgid "Skipping startup message for topic \"{0}\": {1}"
 msgstr "Startnachricht für Topic \"{0}\" wird übersprungen: {1}"
 
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:200
+msgid "Can't remove Home Assistant entity: {0}"
+msgstr "Home-Assistant-Entität kann nicht entfernt werden: {0}"
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:212
+msgid "Couldn't send Home Assistant removal to topic \"{0}\" (error {1})."
+msgstr "Home-Assistant-Entfernung an Topic \"{0}\" konnte nicht gesendet werden (Fehler {1})."
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:218
+msgid "Requested removal of a Home Assistant entity via topic \"{0}\"."
+msgstr "Entfernung einer Home-Assistant-Entität über Topic \"{0}\" angefordert."
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:221
+msgid "Couldn't send Home Assistant removal to topic \"{0}\": {1}"
+msgstr "Home-Assistant-Entfernung an Topic \"{0}\" konnte nicht gesendet werden: {1}"
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:231
+msgid "Home Assistant entity removal confirmed for topic \"{0}\"."
+msgstr "Entfernung der Home-Assistant-Entität für Topic \"{0}\" bestätigt."
+
 #: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:135
 msgid "Skipping Home Assistant discovery for topic \"{0}\": {1}"
 msgstr "Home-Assistant-Erkennung für Topic \"{0}\" übersprungen: {1}"

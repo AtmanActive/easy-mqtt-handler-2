@@ -75,6 +75,9 @@ class PayloadTabWidget(QWidget):
         self.table.horizontalHeader().setStretchLastSection(True)
         # left-align the header labels to line up with the left-aligned cell data
         self.table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        # a few pixels of breathing room in the cells and the header
+        self.table.setStyleSheet(
+            "QTableWidget::item { padding: 3px; } QHeaderView::section { padding: 3px; }")
 
     def setting_changed_event(self, text):
         self.settings_changed.emit(True)

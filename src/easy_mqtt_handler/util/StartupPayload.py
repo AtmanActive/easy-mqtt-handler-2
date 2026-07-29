@@ -34,7 +34,11 @@ TYPE_LITERAL = "literal"
 TYPE_COMMAND = "command"
 TYPE_BUILTIN = "built-in"
 TYPE_ENVIRONMENT = "environment"
-PAYLOAD_TYPES = (TYPE_LITERAL, TYPE_COMMAND, TYPE_BUILTIN, TYPE_ENVIRONMENT)
+# not a way of producing a payload, but an action: remove the Home Assistant
+# entity named by HA Entity and HA ID. Handled specially by the worker; every
+# other field on the row is ignored.
+TYPE_REMOVE_HA_ENTITY = "remove_ha_entity"
+PAYLOAD_TYPES = (TYPE_LITERAL, TYPE_COMMAND, TYPE_BUILTIN, TYPE_ENVIRONMENT, TYPE_REMOVE_HA_ENTITY)
 DEFAULT_TYPE = TYPE_LITERAL
 
 # a command that has not produced anything within this long is abandoned, so a
@@ -562,4 +566,8 @@ def resolve_startup_payload(message, search_dirs=None):
         return _resolve_builtin(payload)
     if payload_type == TYPE_ENVIRONMENT:
         return _resolve_environment(payload)
+    if payload_type == TYPE_REMOVE_HA_ENTITY:
+        # an action, not a payload; the worker deals with it before ever asking
+        # here, so this only guards against it being sent as a literal by mistake
+        return None, "handled as a Home Assistant entity removal"
     return payload, None

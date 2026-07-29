@@ -16,7 +16,8 @@ from easy_mqtt_handler.util.MQTTStartupMessages import MQTTStartupMessages
 from easy_mqtt_handler.util.StartupPayload import builtin_keys
 from easy_mqtt_handler.qt.tabs import StartupTabWidget as stw_module
 from easy_mqtt_handler.qt.tabs.StartupTabWidget import (
-    StartupTabWidget, COLUMN_TOPIC, COLUMN_PAYLOAD)
+    StartupTabWidget, COLUMN_TOPIC, COLUMN_PAYLOAD, COLUMN_TYPE, COLUMN_HA_ID,
+    REMOVAL_TEXT_COLOR)
 
 
 @pytest.fixture(scope="module")
@@ -34,6 +35,66 @@ def tab(app, tmp_path):
 
 def payload_widget(tab, row):
     return tab.table.cellWidget(row, COLUMN_PAYLOAD)
+
+
+# --- the remove_ha_entity row type ------------------------------------------
+
+def test_a_removal_row_colours_its_text_cells_red(tab):
+    tab.add_data("", "", 0, False, ha_entity="sensor", ha_id="old_one",
+                 payload_type="remove_ha_entity")
+
+    topic_item = tab.table.item(0, COLUMN_TOPIC)
+    id_item = tab.table.item(0, COLUMN_HA_ID)
+    assert topic_item.foreground().color() == REMOVAL_TEXT_COLOR
+    assert id_item.foreground().color() == REMOVAL_TEXT_COLOR
+
+
+def test_a_removal_row_colours_its_type_drop_down(tab):
+    tab.add_data("", "", 0, False, ha_id="old_one", payload_type="remove_ha_entity")
+
+    type_combo = tab.table.cellWidget(0, COLUMN_TYPE)
+    # the style sheet carries the red colour on the combo's text
+    assert "color" in type_combo.styleSheet()
+
+
+def test_an_ordinary_row_is_not_coloured(tab):
+    tab.add_data("t", "ON", 0, False, payload_type="literal")
+
+    assert tab.table.item(0, COLUMN_TOPIC).foreground().color() != REMOVAL_TEXT_COLOR
+    assert tab.table.cellWidget(0, COLUMN_TYPE).styleSheet() == ""
+
+
+def test_switching_a_row_to_removal_turns_it_red_then_back(tab):
+    tab.add_data("t", "ON", 0, False, ha_id="x", payload_type="literal")
+    assert tab.table.item(0, COLUMN_TOPIC).foreground().color() != REMOVAL_TEXT_COLOR
+
+    tab.table.cellWidget(0, COLUMN_TYPE).setCurrentText("remove_ha_entity")
+    assert tab.table.item(0, COLUMN_TOPIC).foreground().color() == REMOVAL_TEXT_COLOR
+
+    tab.table.cellWidget(0, COLUMN_TYPE).setCurrentText("literal")
+    assert tab.table.item(0, COLUMN_TOPIC).foreground().color() != REMOVAL_TEXT_COLOR
+
+
+def test_a_removal_type_is_saved(tab):
+    tab.add_data("", "", 0, False, ha_entity="sensor", ha_id="gone",
+                 payload_type="remove_ha_entity")
+    tab.set_new_startup_data()
+
+    saved = MQTTStartupMessages.get_instance().startup_data
+    assert saved[0]["type"] == "remove_ha_entity"
+    assert saved[0]["ha_id"] == "gone"
+
+
+def test_reload_from_settings_rebuilds_the_table(tab):
+    MQTTStartupMessages.get_instance().startup_data = [
+        {"topic": "a", "type": "literal", "payload": "x"},
+        {"topic": "", "type": "remove_ha_entity", "ha_id": "gone"},
+    ]
+
+    tab.reload_from_settings()
+
+    assert tab.table.rowCount() == 2
+    assert tab.type_value(1) == "remove_ha_entity"
 
 
 def test_a_literal_row_has_a_text_payload_cell(tab):

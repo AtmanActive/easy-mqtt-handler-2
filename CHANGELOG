@@ -1,3 +1,21 @@
+# Version 2.1.4
+[Feature] A new "Send on Startup" Type, "remove_ha_entity", removes a Home Assistant entity that was
+          created earlier through MQTT discovery. Set the Type, fill in HA Entity and HA ID to match the
+          entity, and that is all: the app publishes the empty retained message to the right discovery
+          topic for you, so nobody has to craft it by hand. Every other field on the row is ignored.
+[Feature] A removal row deletes itself once the removal is confirmed. The removal is sent at QoS 1, and
+          when the broker acknowledges it, which is the definitive sign the retained config was cleared,
+          the app removes the row from the table and the configuration file. If no acknowledgement comes,
+          the row is left in place and retried on the next connection.
+[Feature] Rows of the "remove_ha_entity" type are shown in red, so it is obvious at a glance that they
+          are meant to make something happen rather than just send a value.
+
+[Fix] A removal row no longer needs a Topic. An ordinary row still needs one, but a removal row is
+      identified by its HA ID, and the Topic column is ignored for it.
+
+[Feature] The tables on the Payload Handlers and Send on Startup tabs have a few pixels more padding in
+          their cells and headers, which makes them easier to read.
+
 # Version 2.1.3
 [Feature] The Connection tab has a Font Size setting, just below Theme, with seven choices from
           "xxsmall" through "default" to "xxlarge". Changing it scales the text throughout the whole

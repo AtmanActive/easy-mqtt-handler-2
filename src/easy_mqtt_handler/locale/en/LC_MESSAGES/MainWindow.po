@@ -103,3 +103,7 @@ msgstr "Connected"
 #: ./src/easy_mqtt_handler/qt/MainWindow.py:286
 msgid "Statuscode {0} not implemented!"
 msgstr "Statuscode {0} not implemented!"
+
+#: ./src/easy_mqtt_handler/qt/MainWindow.py:277
+msgid "Removed the completed removal row for topic \"{0}\"."
+msgstr "Removed the completed removal row for topic \"{0}\"."
