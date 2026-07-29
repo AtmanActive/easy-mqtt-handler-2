@@ -1,3 +1,11 @@
+# Version 2.1.5
+[Fix] The tables render correctly again on Linux. Version 2.1.4 added cell padding with a style sheet on
+      the table, which on some Linux styles switches the whole table to style-sheet rendering and blanks
+      the cell backgrounds to white while the rest of the app stays dark. The padding is now applied
+      through the row and header heights instead, which never touches any colour, so the tables follow
+      the theme as they did in 2.1.3. The red colouring of removal rows likewise moved off a style sheet
+      and onto the palette, for the same reason.
+
 # Version 2.1.4
 [Feature] A new "Send on Startup" Type, "remove_ha_entity", removes a Home Assistant entity that was
           created earlier through MQTT discovery. Set the Type, fill in HA Entity and HA ID to match the

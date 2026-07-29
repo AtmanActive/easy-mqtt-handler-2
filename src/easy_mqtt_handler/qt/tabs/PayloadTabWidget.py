@@ -15,6 +15,7 @@ from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QWidget, QTableWidget, QAbstractItemView, QPushButton, QVBoxLayout, QHBoxLayout, \
     QHeaderView, QSizePolicy, QTableWidgetItem, QFileDialog, QLabel
 
+from easy_mqtt_handler.qt.TableStyle import add_table_padding
 from easy_mqtt_handler.util.MQTTPayloads import MQTTPayloads
 from easy_mqtt_handler.util.Tools import Utils
 
@@ -75,9 +76,7 @@ class PayloadTabWidget(QWidget):
         self.table.horizontalHeader().setStretchLastSection(True)
         # left-align the header labels to line up with the left-aligned cell data
         self.table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        # a few pixels of breathing room in the cells and the header
-        self.table.setStyleSheet(
-            "QTableWidget::item { padding: 3px; } QHeaderView::section { padding: 3px; }")
+        add_table_padding(self.table)
 
     def setting_changed_event(self, text):
         self.settings_changed.emit(True)

@@ -50,18 +50,26 @@ def test_a_removal_row_colours_its_text_cells_red(tab):
 
 
 def test_a_removal_row_colours_its_type_drop_down(tab):
+    from PyQt5.QtGui import QPalette
+
     tab.add_data("", "", 0, False, ha_id="old_one", payload_type="remove_ha_entity")
 
     type_combo = tab.table.cellWidget(0, COLUMN_TYPE)
-    # the style sheet carries the red colour on the combo's text
-    assert "color" in type_combo.styleSheet()
+    # the colour is carried on the palette, not a style sheet, so it cannot
+    # blank the combo's background on some Linux styles
+    assert type_combo.palette().color(QPalette.Text) == REMOVAL_TEXT_COLOR
+    # and no style sheet was set on the table or the combo
+    assert type_combo.styleSheet() == ""
+    assert tab.table.styleSheet() == ""
 
 
 def test_an_ordinary_row_is_not_coloured(tab):
+    from PyQt5.QtGui import QPalette
+
     tab.add_data("t", "ON", 0, False, payload_type="literal")
 
     assert tab.table.item(0, COLUMN_TOPIC).foreground().color() != REMOVAL_TEXT_COLOR
-    assert tab.table.cellWidget(0, COLUMN_TYPE).styleSheet() == ""
+    assert tab.table.cellWidget(0, COLUMN_TYPE).palette().color(QPalette.Text) != REMOVAL_TEXT_COLOR
 
 
 def test_switching_a_row_to_removal_turns_it_red_then_back(tab):

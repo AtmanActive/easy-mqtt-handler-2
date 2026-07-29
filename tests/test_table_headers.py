@@ -41,3 +41,25 @@ def test_send_on_startup_headers_are_left_aligned(app, tmp_path):
     tab = StartupTabWidget()
 
     assert_left_aligned(tab.table)
+
+
+def test_tables_carry_no_style_sheet(app, tmp_path):
+    # a style sheet on a QTableWidget blanks the cell backgrounds on some Linux
+    # styles, so padding must come from geometry instead
+    MQTTPayloads(str(tmp_path / "payloads.json"))
+    MQTTStartupMessages(str(tmp_path / "startup.json"))
+
+    assert PayloadTabWidget().table.styleSheet() == ""
+    assert StartupTabWidget().table.styleSheet() == ""
+
+
+def test_tables_have_extra_row_height(app, tmp_path):
+    # the readability padding is applied through geometry, not a style sheet
+    from PyQt5.QtWidgets import QTableWidget
+    from easy_mqtt_handler.qt.TableStyle import CELL_PADDING
+
+    MQTTStartupMessages(str(tmp_path / "startup.json"))
+    tab = StartupTabWidget()
+
+    default = QTableWidget().verticalHeader().defaultSectionSize()
+    assert tab.table.verticalHeader().defaultSectionSize() == default + 2 * CELL_PADDING

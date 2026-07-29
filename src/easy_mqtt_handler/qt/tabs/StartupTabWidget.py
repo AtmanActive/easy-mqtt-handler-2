@@ -12,10 +12,11 @@ import gettext
 
 from PyQt5 import QtGui
 from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QBrush, QColor
+from PyQt5.QtGui import QColor, QPalette
 from PyQt5.QtWidgets import QWidget, QTableWidget, QAbstractItemView, QPushButton, QVBoxLayout, QHBoxLayout, \
-    QHeaderView, QSizePolicy, QTableWidgetItem, QComboBox, QLabel
+    QHeaderView, QSizePolicy, QTableWidgetItem, QComboBox, QLabel, QApplication
 
+from easy_mqtt_handler.qt.TableStyle import add_table_padding
 from easy_mqtt_handler.util.MQTTStartupMessages import MQTTStartupMessages, VALID_QOS_LEVELS, \
     HA_COMMON_COMPONENTS, HA_DEFAULT_COMPONENT
 from easy_mqtt_handler.util.StartupPayload import PAYLOAD_TYPES, DEFAULT_TYPE, TYPE_BUILTIN, \
@@ -41,9 +42,6 @@ COLUMN_HA_NAME = 7
 # a red-tinted white, so a removal row stands out as something that is meant to
 # make a change happen
 REMOVAL_TEXT_COLOR = QColor(255, 120, 120)
-
-# a little more room in every cell and header, for readability
-CELL_PADDING = 3
 
 
 class StartupTabWidget(QWidget):
@@ -102,10 +100,7 @@ class StartupTabWidget(QWidget):
         self.table.horizontalHeader().setStretchLastSection(True)
         # left-align the header labels to line up with the left-aligned cell data
         self.table.horizontalHeader().setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        # a few pixels of breathing room in the cells and the header
-        self.table.setStyleSheet(
-            f"QTableWidget::item {{ padding: {CELL_PADDING}px; }}"
-            f" QHeaderView::section {{ padding: {CELL_PADDING}px; }}")
+        add_table_padding(self.table)
 
     def setting_changed_event(self, _ignored=None):
         # ignore the churn of rebuilding the table from saved data
@@ -187,14 +182,28 @@ class StartupTabWidget(QWidget):
                 # clear any colour a previous type left behind, back to default
                 item.setData(Qt.ForegroundRole, None)
 
-        # the drop downs are cell widgets, so their text colour comes from a
-        # style sheet rather than the item foreground
-        combo_style = f"color: rgb({REMOVAL_TEXT_COLOR.red()}, {REMOVAL_TEXT_COLOR.green()}, " \
-                      f"{REMOVAL_TEXT_COLOR.blue()});" if is_removal else ""
+        # the drop downs are cell widgets, so their text colour is set through
+        # the palette. deliberately not a style sheet, which would blank the
+        # widget's own background on some Linux styles.
         for column in (COLUMN_TYPE, COLUMN_QOS, COLUMN_HA_ENTITY, COLUMN_PAYLOAD):
             widget = self.table.cellWidget(row, column)
             if isinstance(widget, QComboBox):
-                widget.setStyleSheet(combo_style)
+                self._colour_combo(widget, REMOVAL_TEXT_COLOR if is_removal else None)
+
+    @staticmethod
+    def _colour_combo(combo, colour):
+        already_red = combo.palette().color(QPalette.Text) == REMOVAL_TEXT_COLOR
+        if colour is None:
+            # only undo a previous reddening; an untouched combo is left with no
+            # explicit palette so it keeps following the application palette,
+            # e.g. when the theme is switched at runtime
+            if already_red:
+                combo.setPalette(QApplication.palette(combo))
+            return
+        palette = combo.palette()
+        for role in (QPalette.Text, QPalette.ButtonText, QPalette.WindowText):
+            palette.setColor(role, colour)
+        combo.setPalette(palette)
 
     def on_type_changed(self, row):
         # rebuild the payload cell for the new type, carrying the old value over
