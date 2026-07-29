@@ -122,6 +122,19 @@ class MQTTSettings(object):
     def theme(self, value):
         self.theme = value
 
+    @property
+    def font_size(self):
+        # one of the named sizes; an absent or unfamiliar value (which is what
+        # every settings file written before this option holds) means "default".
+        # The list is kept in step with FONT_SIZE_CHOICES in util/Fonts.py
+        value = self.get_property('font_size')
+        return value if value in ("xxsmall", "xsmall", "small", "default",
+                                  "large", "xlarge", "xxlarge") else "default"
+
+    @font_size.setter
+    def font_size(self, value):
+        self.font_size = value
+
     _instance = None
     _filename = ""
     _settings = {}

@@ -77,6 +77,37 @@ def test_theme_round_trips_through_save(tmp_path):
     assert json.loads(settings_file.read_text(encoding="utf-8"))["theme"] == "dark"
 
 
+def test_font_size_defaults_to_default_when_absent(tmp_path):
+    settings_file = tmp_path / "mqtt.json"
+    settings_file.write_text(json.dumps({"hostname": "broker.example.org"}), encoding="utf-8")
+
+    assert MQTTSettings(str(settings_file)).font_size == "default"
+
+
+@pytest.mark.parametrize("choice", ["xxsmall", "xsmall", "small", "default", "large", "xlarge", "xxlarge"])
+def test_font_size_reads_back_a_valid_choice(tmp_path, choice):
+    settings_file = tmp_path / "mqtt.json"
+    settings_file.write_text(json.dumps({"font_size": choice}), encoding="utf-8")
+
+    assert MQTTSettings(str(settings_file)).font_size == choice
+
+
+def test_an_unfamiliar_font_size_is_treated_as_default(tmp_path):
+    settings_file = tmp_path / "mqtt.json"
+    settings_file.write_text(json.dumps({"font_size": "enormous"}), encoding="utf-8")
+
+    assert MQTTSettings(str(settings_file)).font_size == "default"
+
+
+def test_font_size_round_trips_through_save(tmp_path):
+    settings_file = tmp_path / "mqtt.json"
+    settings = MQTTSettings(str(settings_file))
+    settings.refresh_settings({"hostname": "localhost", "font_size": "large"})
+
+    assert settings.save_settings() is True
+    assert json.loads(settings_file.read_text(encoding="utf-8"))["font_size"] == "large"
+
+
 def test_settings_ssl_flags_default_to_false_on_missing_file(tmp_path):
     # a fresh install has no settings file at all
     settings = MQTTSettings(str(tmp_path / "not-created-yet.json"))

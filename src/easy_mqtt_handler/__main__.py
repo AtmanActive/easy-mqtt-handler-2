@@ -14,7 +14,7 @@ import argparse
 
 from PyQt5.QtWidgets import QApplication
 from easy_mqtt_handler.qt.MainWindow import MainWindow
-from easy_mqtt_handler.util import Theme
+from easy_mqtt_handler.util import Fonts, Theme
 from easy_mqtt_handler.util.MQTTSettings import MQTTSettings
 from easy_mqtt_handler.util.Tools import Utils
 
@@ -24,6 +24,13 @@ def configured_theme():
     if MQTTSettings._instance is None:
         return None
     return MQTTSettings.get_instance().theme
+
+
+def configured_font_size():
+    """The saved Font Size choice, or None before the settings have been loaded."""
+    if MQTTSettings._instance is None:
+        return None
+    return MQTTSettings.get_instance().font_size
 
 
 # entry point
@@ -52,13 +59,18 @@ if __name__ == "__main__":
     # keep following it while we run
     theme_manager = Theme.install(app, theme_getter=configured_theme)
 
-    # create the main window; it lets the Theme drop down apply changes live
-    main_window = MainWindow(app, args.mqtt_configuration_file, args.payload_configuration_file,
-                             args.startup_configuration_file, theme_manager)
+    # apply the saved Font Size to the whole application
+    font_manager = Fonts.install(app, size_getter=configured_font_size)
 
-    # the settings did not exist when the theme was installed, so apply the
-    # saved choice now that they are loaded
+    # create the main window; it lets the Theme and Font Size drop downs apply
+    # changes live
+    main_window = MainWindow(app, args.mqtt_configuration_file, args.payload_configuration_file,
+                             args.startup_configuration_file, theme_manager, font_manager)
+
+    # the settings did not exist when the managers were installed, so apply the
+    # saved choices now that they are loaded
     theme_manager.sync_with_system()
+    font_manager.apply_configured()
 
     # if this is our first run, show the main window
     if firstStart:

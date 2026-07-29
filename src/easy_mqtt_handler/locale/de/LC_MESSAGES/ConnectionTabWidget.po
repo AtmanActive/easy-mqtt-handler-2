@@ -20,6 +20,10 @@ msgstr "Hostname:"
 msgid "Theme:"
 msgstr "Thema:"
 
+#: ./src/easy_mqtt_handler/qt/tabs/ConnectionTabWidget.py:132
+msgid "Font Size:"
+msgstr "Schriftgröße:"
+
 #: ./src/easy_mqtt_handler/qt/tabs/ConnectionTabWidget.py:36
 msgid "Port:"
 msgstr "Port:"

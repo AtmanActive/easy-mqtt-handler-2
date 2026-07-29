@@ -14,6 +14,7 @@ from PyQt5 import QtGui
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLineEdit, QLabel, QCheckBox, QHBoxLayout, QFileDialog, QPushButton, \
     QComboBox
+from easy_mqtt_handler.util.Fonts import FONT_SIZE_CHOICES, DEFAULT_FONT_SIZE
 from easy_mqtt_handler.util.MQTTSettings import MQTTSettings
 from easy_mqtt_handler.util.Theme import THEME_CHOICES, DEFAULT_THEME_CHOICE
 from easy_mqtt_handler.util.Tools import Utils
@@ -30,6 +31,8 @@ class ConnectionTabWidget(QWidget):
     settings_changed = pyqtSignal(bool)
     # emitted when the theme choice changes, so it can be applied straight away
     theme_changed = pyqtSignal()
+    # emitted when the font size choice changes, applied the same way
+    font_size_changed = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -128,6 +131,11 @@ class ConnectionTabWidget(QWidget):
         self.theme_dropdown = QComboBox()
         self.theme_dropdown.addItems(list(THEME_CHOICES))
 
+        # and the whole-application font size, right below the theme
+        self.font_size_label = QLabel(_("Font Size:"))
+        self.font_size_dropdown = QComboBox()
+        self.font_size_dropdown.addItems(list(FONT_SIZE_CHOICES))
+
         # Create a layout for the textboxes and labels
         layout = QVBoxLayout()
         layout.addWidget(self.hostname_label)
@@ -145,9 +153,11 @@ class ConnectionTabWidget(QWidget):
 
         layout.addStretch(1)
 
-        # kept below the stretch so it stays pinned to the bottom of the tab
+        # kept below the stretch so they stay pinned to the bottom of the tab
         layout.addWidget(self.theme_label)
         layout.addWidget(self.theme_dropdown)
+        layout.addWidget(self.font_size_label)
+        layout.addWidget(self.font_size_dropdown)
 
         # Set the layout for the QWidget
         self.setLayout(layout)
@@ -205,6 +215,10 @@ class ConnectionTabWidget(QWidget):
         self.setting_changed_event()
         self.theme_changed.emit()
 
+    def font_size_changed_event(self):
+        self.setting_changed_event()
+        self.font_size_changed.emit()
+
     def set_new_connection_settings(self):
         settings_data = []
 
@@ -222,8 +236,9 @@ class ConnectionTabWidget(QWidget):
             "client_key_file": self.client_key_file.text(),
             "allow_insecure_ssl": self.insecure_ssl_checkbox.isChecked(),
             # included here because refresh_settings replaces the whole dict; if
-            # it were left out, saving a connection change would drop the theme
-            "theme": self.theme_dropdown.currentText()
+            # these were left out, saving a connection change would drop them
+            "theme": self.theme_dropdown.currentText(),
+            "font_size": self.font_size_dropdown.currentText()
         }
 
         MQTTSettings.get_instance().refresh_settings(settings_data)
@@ -244,6 +259,8 @@ class ConnectionTabWidget(QWidget):
         self.insecure_ssl_checkbox.setChecked(settings.allow_insecure_ssl)
         self.theme_dropdown.setCurrentText(settings.theme if settings.theme in THEME_CHOICES
                                            else DEFAULT_THEME_CHOICE)
+        self.font_size_dropdown.setCurrentText(settings.font_size if settings.font_size in FONT_SIZE_CHOICES
+                                               else DEFAULT_FONT_SIZE)
 
         # now that we've loaded the settings, enable event handlers to catch changes
         self.hostname_textbox.textChanged.connect(self.setting_changed_event)
@@ -258,6 +275,7 @@ class ConnectionTabWidget(QWidget):
         self.client_key_file.textChanged.connect(self.setting_changed_event)
         self.insecure_ssl_checkbox.stateChanged.connect(self.setting_changed_event)
         self.theme_dropdown.currentTextChanged.connect(self.theme_changed_event)
+        self.font_size_dropdown.currentTextChanged.connect(self.font_size_changed_event)
 
         # check whether we need to show SSL/TLS settings
         self.ssl_settings_widget.setHidden(not self.enable_ssl_checkbox.isChecked())

@@ -53,11 +53,12 @@ class MainWindow(QMainWindow):
     """
 
     def __init__(self, app, mqtt_config_file, payload_config_file, startup_config_file="",
-                 theme_manager=None):
+                 theme_manager=None, font_manager=None):
         super().__init__()
 
-        # applies the Theme choice from the Connection tab straight away
+        # apply the Theme and Font Size choices from the Connection tab straight away
         self.theme_manager = theme_manager
+        self.font_manager = font_manager
 
         self.worker_thread: QThread
 
@@ -100,6 +101,7 @@ class MainWindow(QMainWindow):
         # wire change handlers
         self.connection_tab.settings_changed.connect(self.on_connection_settings_changed)
         self.connection_tab.theme_changed.connect(self.on_theme_changed)
+        self.connection_tab.font_size_changed.connect(self.on_font_size_changed)
         self.payload_editor.settings_changed.connect(self.on_payloads_changed)
         self.startup_editor.settings_changed.connect(self.on_startup_messages_changed)
 
@@ -255,6 +257,12 @@ class MainWindow(QMainWindow):
         # it up and repaints the whole application immediately
         if self.theme_manager is not None:
             self.theme_manager.sync_with_system()
+
+    def on_font_size_changed(self):
+        # likewise the new size is already saved, so applying it resizes the
+        # whole application straight away
+        if self.font_manager is not None:
+            self.font_manager.apply_configured()
 
     def on_connect_action(self):
         if self.worker_thread.mqtt_connect():

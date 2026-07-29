@@ -73,6 +73,11 @@ At the very bottom of the tab is a **Theme** setting with three choices:
 The choice takes effect immediately and is saved with the rest of your settings. Leave it on **system**
 and the tool behaves as it always has, matching your desktop.
 
+Just below it is a **Font Size** setting, from **xxsmall** through **default** to **xxlarge**. Changing
+it scales the text everywhere in the tool at once, which is handy on very high resolution screens or if
+you just prefer larger text. Like the theme, it applies immediately and is saved with your settings;
+leave it on **default** and nothing changes.
+
 ## Payload Handlers tab
 
 ![Payload Handlers](docs/assets/payload-handlers-tab.png)
