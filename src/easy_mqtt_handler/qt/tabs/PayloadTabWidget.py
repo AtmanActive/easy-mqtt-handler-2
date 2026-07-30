@@ -56,6 +56,8 @@ class PayloadTabWidget(QWidget):
         # create the buttons
         self.save_button = QPushButton(_('Add Payload'))
         self.save_button.clicked.connect(self.add_payload)
+        self.duplicate_button = QPushButton(_('Duplicate Payload'))
+        self.duplicate_button.clicked.connect(self.duplicate_payload)
         self.cancel_button = QPushButton(_('Remove Payload'))
         self.cancel_button.clicked.connect(self.remove_payload)
 
@@ -66,6 +68,7 @@ class PayloadTabWidget(QWidget):
 
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.save_button)
+        button_layout.addWidget(self.duplicate_button)
         button_layout.addWidget(self.cancel_button)
         layout.addLayout(button_layout)
 
@@ -159,14 +162,43 @@ class PayloadTabWidget(QWidget):
 
     def remove_payload(self):
         selected_row = self.table.currentRow()
+        if selected_row < 0:
+            return
         self.table.removeRow(selected_row)
         self.setting_changed_event(True)
 
-    def showEvent(self, a0: QtGui.QShowEvent) -> None:
+    def duplicate_payload(self):
+        selected_row = self.table.currentRow()
+        if selected_row < 0:
+            # nothing selected: do nothing at all
+            return
+
+        # copy the selected row and put the copy right after it, then rebuild so
+        # the browse buttons keep the right row bindings
+        self.set_new_payload_data()
+        store = MQTTPayloads.get_instance()
+        data = list(store.payload_data) if isinstance(store.payload_data, list) else []
+        if selected_row >= len(data):
+            return
+        data.insert(selected_row + 1, dict(data[selected_row]))
+        store.payload_data = data
+
+        self.reload_from_settings()
+        self.table.selectRow(selected_row + 1)
+        self.setting_changed_event(True)
+
+    def reload_from_settings(self):
+        """Rebuild the table from the saved payload data."""
         # unbind dataChanged event until we've loaded the new payload data
-        self.table.model().dataChanged.disconnect()
+        try:
+            self.table.model().dataChanged.disconnect()
+        except TypeError:
+            # nothing connected yet, which is the case on the very first show
+            pass
 
         payload_settings = MQTTPayloads.get_instance().payload_data
+        if not isinstance(payload_settings, list):
+            payload_settings = []
 
         # clear the table to get a fresh copy of the payload config
         self.table.clearContents()
@@ -174,10 +206,15 @@ class PayloadTabWidget(QWidget):
 
         # fill table with current payload config
         for item in payload_settings:
-            self.add_data(str(item['payload_command']),
-                          str(item['payload_argument']),
-                          str(item['command_to_run']),
-                          str(item['command_line_arguments']))
+            if not isinstance(item, dict):
+                continue
+            self.add_data(str(item.get('payload_command', "")),
+                          str(item.get('payload_argument', "")),
+                          str(item.get('command_to_run', "")),
+                          str(item.get('command_line_arguments', "")))
 
         # now that we've loaded data: enable listening to dataChanged event and send a signal on changes
         self.table.model().dataChanged.connect(self.setting_changed_event)
+
+    def showEvent(self, a0: QtGui.QShowEvent) -> None:
+        self.reload_from_settings()

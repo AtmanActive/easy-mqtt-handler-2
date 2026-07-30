@@ -80,6 +80,8 @@ class StartupTabWidget(QWidget):
         # create the buttons
         self.save_button = QPushButton(_('Add Message'))
         self.save_button.clicked.connect(self.add_message)
+        self.duplicate_button = QPushButton(_('Duplicate Message'))
+        self.duplicate_button.clicked.connect(self.duplicate_message)
         self.cancel_button = QPushButton(_('Remove Message'))
         self.cancel_button.clicked.connect(self.remove_message)
 
@@ -90,6 +92,7 @@ class StartupTabWidget(QWidget):
 
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.save_button)
+        button_layout.addWidget(self.duplicate_button)
         button_layout.addWidget(self.cancel_button)
         layout.addLayout(button_layout)
 
@@ -263,6 +266,26 @@ class StartupTabWidget(QWidget):
         if selected_row < 0:
             return
         self.table.removeRow(selected_row)
+        self.setting_changed_event()
+
+    def duplicate_message(self):
+        selected_row = self.table.currentRow()
+        if selected_row < 0:
+            # nothing selected: do nothing at all
+            return
+
+        # copy the selected row's data and put the copy right after it, then
+        # rebuild so the drop downs and their row bindings are correct. going
+        # through the data avoids the fiddliness of inserting a live row with
+        # its cell widgets in the middle of the table.
+        self.set_new_startup_data()
+        store = MQTTStartupMessages.get_instance()
+        data = list(store.startup_data)
+        data.insert(selected_row + 1, dict(data[selected_row]))
+        store.startup_data = data
+
+        self.reload_from_settings()
+        self.table.selectRow(selected_row + 1)
         self.setting_changed_event()
 
     def set_new_startup_data(self):

@@ -89,6 +89,10 @@ column. Should you need to add some command line parameters to the executable yo
 **Command line arguments** column. Look into the chapter [Integrating with Home Assistant](#integrating-with-home-assistant)
 for some example.
 
+The **Duplicate Payload** button copies the selected row and inserts the copy right below it, so you can base a
+new handler on an existing one. Two rows with the same **Payload Command** and **Payload Argument** count as one
+handler — the first wins and the duplicate is skipped, with a note in the [Logs tab](#logs-tab).
+
 Since **Version 0.1.2** there's a new feature for Power Users: parameters. With parameters, you can easily pass dynamic
 command line arguments to the command you want to run. The process is quite straight-forward:
 
@@ -125,8 +129,11 @@ Every row is one message:
 | **HA ID** | The unique id of the entity to create. Filling this in is what switches auto discovery on. Optional. |
 | **HA Name** | The friendly name shown in Home Assistant. Optional, defaults to the HA ID. |
 
-Use **Add Message** and **Remove Message** to manage the list, then save with the toolbar's save button, just as
-on the Payload Handlers tab. Rows without a topic are ignored, so a half-finished row is never sent.
+Use **Add Message**, **Duplicate Message** and **Remove Message** to manage the list, then save with the
+toolbar's save button, just as on the Payload Handlers tab. **Duplicate Message** copies the selected row and
+inserts the copy right below it, which is handy when several rows are almost the same; edit the copy to make it
+unique. Rows without a topic are ignored, so a half-finished row is never sent, and two rows aimed at the same
+topic count as one — the duplicate is skipped and noted in the [Logs tab](#logs-tab).
 
 ### Payload types
 

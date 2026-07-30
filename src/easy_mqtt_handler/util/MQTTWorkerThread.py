@@ -20,7 +20,7 @@ from paho.mqtt.client import ssl
 from easy_mqtt_handler.util.MQTTPayloads import MQTTPayloads
 from easy_mqtt_handler.util.MQTTSettings import MQTTSettings
 from easy_mqtt_handler.util.MQTTStartupMessages import MQTTStartupMessages, DiscoveryError, discovery_for, \
-    ha_removal_topic
+    ha_removal_topic, startup_target_topic
 from easy_mqtt_handler.util.StartupPayload import resolve_startup_payload, TYPE_REMOVE_HA_ENTITY
 from easy_mqtt_handler.util.Tools import Utils
 
@@ -90,6 +90,14 @@ class MQTTWorkerThread(QThread):
                                    format(self.settings.topic))
             self.track_status.emit(103)
 
+        # a duplicate payload handler never runs, since the first match wins, but
+        # say so once so the user is not left wondering why a row does nothing
+        if MQTTPayloads._instance is not None:
+            for command, argument in MQTTPayloads.get_instance().duplicate_command_keys():
+                self.add_log_line.emit(
+                    _("Ignoring duplicate payload handler for command \"{0}\", argument \"{1}\".")
+                    .format(command, argument))
+
         # publish whatever the user configured under "Send on Startup" before we
         # settle into listening. subscribing first means any reply to these
         # messages is already covered
@@ -133,7 +141,14 @@ class MQTTWorkerThread(QThread):
 
     def send_startup_messages(self, client):
         """Publish the configured startup messages, if there are any."""
-        messages = MQTTStartupMessages.get_instance().publishable_messages()
+        messages, duplicates = MQTTStartupMessages.get_instance().publishable_and_duplicate_messages()
+
+        # a second row aimed at the same topic would just repeat the first, so
+        # it is left unsent and noted instead
+        for duplicate in duplicates:
+            self.add_log_line.emit(
+                _("Skipping duplicate startup row for topic \"{0}\".")
+                .format(startup_target_topic(duplicate) or ""))
 
         if not messages:
             return

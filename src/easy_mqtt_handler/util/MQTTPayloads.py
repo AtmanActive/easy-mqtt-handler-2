@@ -67,3 +67,27 @@ class MQTTPayloads(object):
         # TODO: implement better exception handling
         except:
             return False
+
+    def duplicate_command_keys(self):
+        """The (command, argument) pairs that appear on more than one row.
+
+        A payload handler is looked up by its command and argument, so two rows
+        with the same pair are duplicates wherever they sit: the first one wins
+        and the rest never run. Returns each duplicate once, in the order it is
+        first seen again, so the caller can report it. The command to run and
+        its arguments are not part of the identity.
+        """
+        data = self._payload_data if isinstance(self._payload_data, list) else []
+
+        seen = set()
+        duplicates = []
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            key = (str(item.get('payload_command', '')), str(item.get('payload_argument', '')))
+            if key in seen:
+                if key not in duplicates:
+                    duplicates.append(key)
+            else:
+                seen.add(key)
+        return duplicates

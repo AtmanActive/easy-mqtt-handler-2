@@ -1,3 +1,14 @@
+# Version 2.1.6
+[Feature] Both tables have a "Duplicate" button, between Add and Remove. With a row selected it makes a
+          copy of that row and inserts it directly below, ready for you to edit; with nothing selected it
+          does nothing. The copy sits next to the original rather than at the end of the table.
+[Feature] Both engines now ignore duplicate rows. A Send on Startup row is a duplicate of an earlier one
+          when it targets the same MQTT topic; a Payload Handler is a duplicate when it has the same
+          command and argument. The duplicate is skipped and noted in the Logs tab, wherever it sits in
+          the list. Only the topic-related columns decide this, not the payload or the command to run,
+          because that is how the engine indexes a row in MQTT terms. This makes the Duplicate button
+          safe: a copy does nothing until you make it unique.
+
 # Version 2.1.5
 [Fix] The tables render correctly again on Linux. Version 2.1.4 added cell padding with a style sheet on
       the table, which on some Linux styles switches the whole table to style-sheet rendering and blanks

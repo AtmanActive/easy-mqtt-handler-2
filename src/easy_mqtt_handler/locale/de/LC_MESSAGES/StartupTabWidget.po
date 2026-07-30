@@ -72,6 +72,10 @@ msgstr "Retain"
 msgid "Add Message"
 msgstr "Nachricht hinzufügen"
 
+#: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:56
+msgid "Duplicate Message"
+msgstr "Nachricht duplizieren"
+
 #: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:57
 msgid "Remove Message"
 msgstr "Nachricht entfernen"

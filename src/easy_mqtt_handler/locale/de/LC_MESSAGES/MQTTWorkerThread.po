@@ -154,6 +154,14 @@ msgstr "Home-Assistant-Entfernung an Topic \"{0}\" konnte nicht gesendet werden:
 msgid "Home Assistant entity removal confirmed for topic \"{0}\"."
 msgstr "Entfernung der Home-Assistant-Entität für Topic \"{0}\" bestätigt."
 
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:98
+msgid "Ignoring duplicate payload handler for command \"{0}\", argument \"{1}\"."
+msgstr "Doppelter Payload-Handler für Anweisung \"{0}\", Parameter \"{1}\" wird ignoriert."
+
+#: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:151
+msgid "Skipping duplicate startup row for topic \"{0}\"."
+msgstr "Doppelte Startzeile für Topic \"{0}\" wird übersprungen."
+
 #: ./src/easy_mqtt_handler/util/MQTTWorkerThread.py:135
 msgid "Skipping Home Assistant discovery for topic \"{0}\": {1}"
 msgstr "Home-Assistant-Erkennung für Topic \"{0}\" übersprungen: {1}"

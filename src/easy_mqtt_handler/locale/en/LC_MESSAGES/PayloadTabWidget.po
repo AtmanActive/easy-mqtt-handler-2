@@ -32,6 +32,10 @@ msgstr "Command to Run"
 msgid "Add Payload"
 msgstr "Add Payload"
 
+#: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:47
+msgid "Duplicate Payload"
+msgstr "Duplicate Payload"
+
 #: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:48
 msgid "Remove Payload"
 msgstr "Remove Payload"

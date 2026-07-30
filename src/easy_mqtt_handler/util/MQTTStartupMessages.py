@@ -94,54 +94,78 @@ class MQTTStartupMessages(object):
         except:
             return False
 
-    def publishable_messages(self):
-        """Return only the entries that can actually be acted on.
+    @staticmethod
+    def _as_message(item):
+        """Turn one raw config row into a message dict, or None if unusable.
 
-        Rows are created empty when the user clicks Add, and a half-filled row
-        should never reach the broker. An ordinary row needs a topic; a
-        removal row ignores the topic and is driven by its HA ID instead, so it
-        needs that.
+        A half-filled row should never reach the broker: an ordinary row needs
+        a topic, and a removal row, which ignores the topic, needs an HA ID.
         """
-        messages = []
+        if not isinstance(item, dict):
+            return None
+
+        # how the payload should be interpreted; an unfamiliar value (or an
+        # older config with none) falls back to a plain literal
+        payload_type = str(item.get("type", DEFAULT_TYPE))
+        if payload_type not in PAYLOAD_TYPES:
+            payload_type = DEFAULT_TYPE
+
+        topic = str(item.get(REQUIRED_FIELD, "")).strip()
+        ha_id = str(item.get("ha_id", "")).strip()
+        if payload_type == TYPE_REMOVE_HA_ENTITY:
+            # the topic is ignored; the entity to remove comes from HA ID
+            if ha_id == "":
+                return None
+        elif topic == "":
+            return None
+
+        qos = item.get("qos", 0)
+        try:
+            qos = int(qos)
+        except (TypeError, ValueError):
+            qos = 0
+        if qos not in VALID_QOS_LEVELS:
+            qos = 0
+
+        return {
+            "topic": topic,
+            "type": payload_type,
+            "payload": str(item.get("payload", "")),
+            "qos": qos,
+            "retain": bool(item.get("retain", False)),
+            # Home Assistant auto discovery, all optional
+            "ha_entity": str(item.get("ha_entity", "")).strip(),
+            "ha_id": ha_id,
+            "ha_name": str(item.get("ha_name", "")).strip(),
+        }
+
+    def publishable_and_duplicate_messages(self):
+        """Split the publishable rows into the ones to act on and duplicates.
+
+        Two rows that target the same MQTT topic are duplicates, wherever they
+        sit in the list: the engine would act on the same topic twice. Only the
+        first is kept; the rest are reported so the caller can note them and
+        move on. Values and payloads are not part of the identity, because they
+        are not what the row is indexed by in MQTT terms.
+        """
+        seen = set()
+        unique = []
+        duplicates = []
         for item in self._startup_data:
-            if not isinstance(item, dict):
+            message = self._as_message(item)
+            if message is None:
                 continue
+            key = startup_target_topic(message)
+            if key in seen:
+                duplicates.append(message)
+            else:
+                seen.add(key)
+                unique.append(message)
+        return unique, duplicates
 
-            # how the payload should be interpreted; an unfamiliar value (or an
-            # older config with none) falls back to a plain literal
-            payload_type = str(item.get("type", DEFAULT_TYPE))
-            if payload_type not in PAYLOAD_TYPES:
-                payload_type = DEFAULT_TYPE
-
-            topic = str(item.get(REQUIRED_FIELD, "")).strip()
-            ha_id = str(item.get("ha_id", "")).strip()
-            if payload_type == TYPE_REMOVE_HA_ENTITY:
-                # the topic is ignored; the entity to remove comes from HA ID
-                if ha_id == "":
-                    continue
-            elif topic == "":
-                continue
-
-            qos = item.get("qos", 0)
-            try:
-                qos = int(qos)
-            except (TypeError, ValueError):
-                qos = 0
-            if qos not in VALID_QOS_LEVELS:
-                qos = 0
-
-            messages.append({
-                "topic": topic,
-                "type": payload_type,
-                "payload": str(item.get("payload", "")),
-                "qos": qos,
-                "retain": bool(item.get("retain", False)),
-                # Home Assistant auto discovery, all optional
-                "ha_entity": str(item.get("ha_entity", "")).strip(),
-                "ha_id": str(item.get("ha_id", "")).strip(),
-                "ha_name": str(item.get("ha_name", "")).strip(),
-            })
-        return messages
+    def publishable_messages(self):
+        """The rows to actually act on, with duplicates already dropped."""
+        return self.publishable_and_duplicate_messages()[0]
 
 
 def discovery_for(message):
@@ -204,3 +228,16 @@ def ha_removal_topic(message):
         return None, f"\"{component}\" is not a usable HA Entity"
 
     return f"{HA_DISCOVERY_PREFIX}/{component}/{ha_id}/config", None
+
+
+def startup_target_topic(message):
+    """The MQTT topic a row acts on, used both as its identity and for logs.
+
+    A removal row acts on the entity's discovery config topic; every other row
+    acts on its own topic. This is what makes two rows count as the same, since
+    it is what the engine actually does with them.
+    """
+    if message.get("type") == TYPE_REMOVE_HA_ENTITY:
+        topic, _error = ha_removal_topic(message)
+        return topic
+    return message.get("topic", "")
