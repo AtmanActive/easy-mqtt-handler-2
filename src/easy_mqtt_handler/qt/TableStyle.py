@@ -8,8 +8,25 @@ SPDX-License-Identifier: GPL-3.0-or-later
 *  Copyright (C) 2026 AtmanActive
 """
 
+from PyQt5.QtWidgets import QComboBox
+
 # extra pixels of room, above and below the content, in each cell and the header
 CELL_PADDING = 3
+
+
+class NoScrollComboBox(QComboBox):
+    """A drop down that does not react to the mouse wheel while it sits in a cell.
+
+    A plain QComboBox changes its value on every wheel notch, even when it is
+    only along for the ride inside a scrolling table. That means scrolling the
+    table silently rewrites the values of every drop down the pointer passes
+    over. Ignoring the wheel event lets it bubble up to the table, which scrolls
+    as the user expects, and leaves the drop down's value alone. The popup list
+    is a separate widget, so it still scrolls normally once opened.
+    """
+
+    def wheelEvent(self, event):
+        event.ignore()
 
 
 def add_table_padding(table, padding=CELL_PADDING):

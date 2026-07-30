@@ -1,3 +1,9 @@
+# Version 2.1.7
+[Fix] Drop-down cells in the tables no longer change their value when you scroll the table with the mouse
+      wheel. Previously, scrolling the table up or down would silently rewrite the Type, QoS, Payload and
+      HA Entity drop-downs the pointer passed over. The drop-downs now let the wheel through to the table,
+      which scrolls as expected, and only change their value when you actually open them and pick a value.
+
 # Version 2.1.6
 [Feature] Both tables have a "Duplicate" button, between Add and Remove. With a row selected it makes a
           copy of that row and inserts it directly below, ready for you to edit; with nothing selected it

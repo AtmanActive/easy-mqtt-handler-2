@@ -16,7 +16,7 @@ from PyQt5.QtGui import QColor, QPalette
 from PyQt5.QtWidgets import QWidget, QTableWidget, QAbstractItemView, QPushButton, QVBoxLayout, QHBoxLayout, \
     QHeaderView, QSizePolicy, QTableWidgetItem, QComboBox, QLabel, QApplication
 
-from easy_mqtt_handler.qt.TableStyle import add_table_padding
+from easy_mqtt_handler.qt.TableStyle import add_table_padding, NoScrollComboBox
 from easy_mqtt_handler.util.MQTTStartupMessages import MQTTStartupMessages, VALID_QOS_LEVELS, \
     HA_COMMON_COMPONENTS, HA_DEFAULT_COMPONENT
 from easy_mqtt_handler.util.StartupPayload import PAYLOAD_TYPES, DEFAULT_TYPE, TYPE_BUILTIN, \
@@ -115,7 +115,7 @@ class StartupTabWidget(QWidget):
     # --- cell builders ------------------------------------------------------
 
     def make_type_selector(self, row, payload_type):
-        selector = QComboBox()
+        selector = NoScrollComboBox()
         selector.addItems(list(PAYLOAD_TYPES))
         selector.setCurrentText(payload_type if payload_type in PAYLOAD_TYPES else DEFAULT_TYPE)
         self.table.setCellWidget(row, COLUMN_TYPE, selector)
@@ -124,7 +124,7 @@ class StartupTabWidget(QWidget):
         return selector
 
     def make_qos_selector(self, row, qos):
-        selector = QComboBox()
+        selector = NoScrollComboBox()
         selector.addItems([str(level) for level in VALID_QOS_LEVELS])
         selector.setCurrentText(str(qos if qos in VALID_QOS_LEVELS else 0))
         self.table.setCellWidget(row, COLUMN_QOS, selector)
@@ -136,7 +136,7 @@ class StartupTabWidget(QWidget):
     def make_component_selector(self, row, component):
         # editable, because Home Assistant knows far more components than the
         # few we can sensibly offer in a drop down
-        selector = QComboBox()
+        selector = NoScrollComboBox()
         selector.setEditable(True)
         selector.addItems(list(HA_COMMON_COMPONENTS))
         selector.setCurrentText(component if component else HA_DEFAULT_COMPONENT)
@@ -155,7 +155,7 @@ class StartupTabWidget(QWidget):
         self.table.setItem(row, COLUMN_PAYLOAD, None)
 
         if payload_type == TYPE_BUILTIN:
-            selector = QComboBox()
+            selector = NoScrollComboBox()
             keys = builtin_keys()
             # a saved value that is not currently offered, e.g. a disk that was
             # connected on another machine or an earlier run, is kept rather

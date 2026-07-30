@@ -14,10 +14,11 @@ from PyQt5.QtWidgets import QApplication, QComboBox, QTableWidgetItem
 
 from easy_mqtt_handler.util.MQTTStartupMessages import MQTTStartupMessages
 from easy_mqtt_handler.util.StartupPayload import builtin_keys
+from easy_mqtt_handler.qt.TableStyle import NoScrollComboBox
 from easy_mqtt_handler.qt.tabs import StartupTabWidget as stw_module
 from easy_mqtt_handler.qt.tabs.StartupTabWidget import (
-    StartupTabWidget, COLUMN_TOPIC, COLUMN_PAYLOAD, COLUMN_TYPE, COLUMN_HA_ID,
-    REMOVAL_TEXT_COLOR)
+    StartupTabWidget, COLUMN_TOPIC, COLUMN_PAYLOAD, COLUMN_TYPE, COLUMN_QOS,
+    COLUMN_HA_ENTITY, COLUMN_HA_ID, REMOVAL_TEXT_COLOR)
 
 
 @pytest.fixture(scope="module")
@@ -35,6 +36,44 @@ def tab(app, tmp_path):
 
 def payload_widget(tab, row):
     return tab.table.cellWidget(row, COLUMN_PAYLOAD)
+
+
+# --- drop downs ignore the mouse wheel --------------------------------------
+
+class _FakeWheelEvent:
+    """Stands in for a QWheelEvent, recording whether it was ignored."""
+
+    def __init__(self):
+        self.ignored = False
+
+    def ignore(self):
+        self.ignored = True
+
+    def accept(self):
+        self.ignored = False
+
+
+def test_a_no_scroll_combo_ignores_the_wheel_and_keeps_its_value(app):
+    combo = NoScrollComboBox()
+    combo.addItems(["a", "b", "c"])
+    combo.setCurrentIndex(1)
+
+    event = _FakeWheelEvent()
+    combo.wheelEvent(event)
+
+    # the event is passed up to the table (to scroll), and the value is unchanged
+    assert event.ignored
+    assert combo.currentIndex() == 1
+
+
+def test_every_cell_drop_down_ignores_the_mouse_wheel(tab):
+    # a built-in row gives every column that can hold a drop down one
+    tab.add_data("t", "networking: hostname", 0, False, ha_entity="sensor",
+                 payload_type="built-in")
+
+    for column in (COLUMN_TYPE, COLUMN_PAYLOAD, COLUMN_QOS, COLUMN_HA_ENTITY):
+        widget = tab.table.cellWidget(0, column)
+        assert isinstance(widget, NoScrollComboBox), f"column {column} is not wheel-proof"
 
 
 # --- the remove_ha_entity row type ------------------------------------------
