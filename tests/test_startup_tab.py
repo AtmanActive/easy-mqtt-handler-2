@@ -76,6 +76,26 @@ def test_every_cell_drop_down_ignores_the_mouse_wheel(tab):
         assert isinstance(widget, NoScrollComboBox), f"column {column} is not wheel-proof"
 
 
+# --- the help button --------------------------------------------------------
+
+def test_the_help_button_is_a_question_mark_at_the_far_right(tab):
+    # the button is a bare "?"
+    assert tab.help_button.text() == "?"
+
+    # it is the last widget in the button bar, after Add, Duplicate and Remove
+    outer = tab.layout()
+    button_bar = outer.itemAt(outer.count() - 1).layout()
+    widgets = [button_bar.itemAt(i).widget() for i in range(button_bar.count())]
+    buttons = [w for w in widgets if w is not None]
+    assert buttons == [tab.save_button, tab.duplicate_button, tab.cancel_button, tab.help_button]
+
+
+def test_the_explanation_text_is_held_for_the_help_pop_up(tab):
+    # the instructional text moved off the tab and behind the help button
+    assert "remove_ha_entity" in tab.help_text
+    assert not hasattr(tab, "hint")
+
+
 # --- the remove_ha_entity row type ------------------------------------------
 
 def test_a_removal_row_colours_its_text_cells_red(tab):

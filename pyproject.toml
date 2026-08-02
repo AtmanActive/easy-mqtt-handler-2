@@ -2,7 +2,7 @@
 [tool.briefcase]
 project_name = "easy-mqtt-handler-2"
 bundle = "com.atmanactive"
-version = "2.1.7"
+version = "2.1.8"
 url = "https://github.com/AtmanActive/easy-mqtt-handler-2"
 license.file = "LICENSE"
 # fork maintainer; original work is Copyright (C) 2023 A. Zeil (GPLv3+),

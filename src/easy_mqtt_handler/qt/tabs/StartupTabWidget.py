@@ -14,7 +14,7 @@ from PyQt5 import QtGui
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QColor, QPalette
 from PyQt5.QtWidgets import QWidget, QTableWidget, QAbstractItemView, QPushButton, QVBoxLayout, QHBoxLayout, \
-    QHeaderView, QSizePolicy, QTableWidgetItem, QComboBox, QLabel, QApplication
+    QHeaderView, QSizePolicy, QTableWidgetItem, QComboBox, QMessageBox, QApplication
 
 from easy_mqtt_handler.qt.TableStyle import add_table_padding, NoScrollComboBox
 from easy_mqtt_handler.util.MQTTStartupMessages import MQTTStartupMessages, VALID_QOS_LEVELS, \
@@ -56,17 +56,17 @@ class StartupTabWidget(QWidget):
         self._suspend_changes = False
 
         # a short explanation, because this tab does something quite different
-        # from the Payload Handlers tab it otherwise resembles
-        self.hint = QLabel(_("These messages are published every time a connection to the broker has been "
-                             "established, before listening starts. Topics are absolute, they are not "
-                             "prefixed with the topic from the Connection tab. Leave this empty to disable.\n"
-                             "Type decides how Payload is read: \"literal\" sends it as-is, \"command\" runs it "
-                             "as a program and sends its output, \"built-in\" sends a value this program works "
-                             "out itself, \"environment\" sends the value of an environment variable.\n"
-                             "Fill in HA ID to have Home Assistant create an entity for the message automatically. "
-                             "The \"remove_ha_entity\" type instead removes the entity named by HA Entity and HA ID "
-                             "(shown in red); the row deletes itself once the broker confirms the removal."))
-        self.hint.setWordWrap(True)
+        # from the Payload Handlers tab it otherwise resembles. It lives behind
+        # the "?" button rather than above the table, to keep the tab uncluttered
+        self.help_text = _("These messages are published every time a connection to the broker has been "
+                           "established, before listening starts. Topics are absolute, they are not "
+                           "prefixed with the topic from the Connection tab. Leave this empty to disable.\n\n"
+                           "Type decides how Payload is read: \"literal\" sends it as-is, \"command\" runs it "
+                           "as a program and sends its output, \"built-in\" sends a value this program works "
+                           "out itself, \"environment\" sends the value of an environment variable.\n\n"
+                           "Fill in HA ID to have Home Assistant create an entity for the message automatically. "
+                           "The \"remove_ha_entity\" type instead removes the entity named by HA Entity and HA ID "
+                           "(shown in red); the row deletes itself once the broker confirms the removal.")
 
         # create the table
         self.table = QTableWidget()
@@ -84,16 +84,22 @@ class StartupTabWidget(QWidget):
         self.duplicate_button.clicked.connect(self.duplicate_message)
         self.cancel_button = QPushButton(_('Remove Message'))
         self.cancel_button.clicked.connect(self.remove_message)
+        # a compact "?" at the far right, opening the explanation that used to
+        # sit above the table
+        self.help_button = QPushButton("?")
+        self.help_button.setFixedWidth(40)
+        self.help_button.clicked.connect(self.show_help)
 
         # create the layout
         layout = QVBoxLayout()
-        layout.addWidget(self.hint)
         layout.addWidget(self.table)
 
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.save_button)
         button_layout.addWidget(self.duplicate_button)
         button_layout.addWidget(self.cancel_button)
+        button_layout.addStretch()
+        button_layout.addWidget(self.help_button)
         layout.addLayout(button_layout)
 
         self.setLayout(layout)
@@ -111,6 +117,15 @@ class StartupTabWidget(QWidget):
             return
         self.settings_changed.emit(True)
         self.set_new_startup_data()
+
+    def show_help(self):
+        # a modal information box, in the spirit of the About dialog, holding the
+        # explanation of what this tab does
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Information)
+        box.setWindowTitle(_("Send on Startup — Help"))
+        box.setText(self.help_text)
+        box.exec_()
 
     # --- cell builders ------------------------------------------------------
 

@@ -13,7 +13,7 @@ import os
 from PyQt5 import QtGui
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QWidget, QTableWidget, QAbstractItemView, QPushButton, QVBoxLayout, QHBoxLayout, \
-    QHeaderView, QSizePolicy, QTableWidgetItem, QFileDialog, QLabel
+    QHeaderView, QSizePolicy, QTableWidgetItem, QFileDialog, QMessageBox
 
 from easy_mqtt_handler.qt.TableStyle import add_table_padding
 from easy_mqtt_handler.util.MQTTPayloads import MQTTPayloads
@@ -35,14 +35,14 @@ class PayloadTabWidget(QWidget):
         super().__init__()
 
         # explain the matching and the $1/$2 substitution, which is otherwise
-        # only documented in the README and easy to miss
-        self.hint = QLabel(_("When a message arrives whose \"command\" and \"args\" match a row, the program runs "
-                             "that row's Command to Run.\n"
-                             "Command line arguments may contain $1, $2, ... which are replaced by the payload's "
-                             "\"param1\", \"param2\", ... A $X with no matching param is removed.\n"
-                             "Example payload: {\"command\": \"notify\", \"args\": \"test\", "
-                             "\"param1\": \"hello\", \"param2\": \"world\"}"))
-        self.hint.setWordWrap(True)
+        # only documented in the README and easy to miss. It lives behind the
+        # "?" button rather than above the table, to keep the tab uncluttered
+        self.help_text = _("When a message arrives whose \"command\" and \"args\" match a row, the program runs "
+                           "that row's Command to Run.\n\n"
+                           "Command line arguments may contain $1, $2, ... which are replaced by the payload's "
+                           "\"param1\", \"param2\", ... A $X with no matching param is removed.\n\n"
+                           "Example payload: {\"command\": \"notify\", \"args\": \"test\", "
+                           "\"param1\": \"hello\", \"param2\": \"world\"}")
 
         # create the table
         self.table = QTableWidget()
@@ -60,16 +60,22 @@ class PayloadTabWidget(QWidget):
         self.duplicate_button.clicked.connect(self.duplicate_payload)
         self.cancel_button = QPushButton(_('Remove Payload'))
         self.cancel_button.clicked.connect(self.remove_payload)
+        # a compact "?" at the far right, opening the explanation that used to
+        # sit above the table
+        self.help_button = QPushButton("?")
+        self.help_button.setFixedWidth(40)
+        self.help_button.clicked.connect(self.show_help)
 
         # create the layout
         layout = QVBoxLayout()
-        layout.addWidget(self.hint)
         layout.addWidget(self.table)
 
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.save_button)
         button_layout.addWidget(self.duplicate_button)
         button_layout.addWidget(self.cancel_button)
+        button_layout.addStretch()
+        button_layout.addWidget(self.help_button)
         layout.addLayout(button_layout)
 
         self.setLayout(layout)
@@ -84,6 +90,15 @@ class PayloadTabWidget(QWidget):
     def setting_changed_event(self, text):
         self.settings_changed.emit(True)
         self.set_new_payload_data()
+
+    def show_help(self):
+        # a modal information box, in the spirit of the About dialog, holding the
+        # explanation of what this tab does
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Information)
+        box.setWindowTitle(_("Payload Handlers — Help"))
+        box.setText(self.help_text)
+        box.exec_()
 
     def add_data(self, payload_command, payload_argument, command_to_run, command_line_arguments):
         row_count = self.table.rowCount()

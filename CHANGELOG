@@ -1,3 +1,9 @@
+# Version 2.1.8
+[Change] The instructional text that used to sit above each table has moved behind a "?" button, at the
+         right-hand end of the button bar under the table. Clicking it opens a pop-up, in the spirit of the
+         About box, with the same explanation. The two tables each get their own button showing their own
+         text. This gives the tables more room and keeps the tab uncluttered until the help is wanted.
+
 # Version 2.1.7
 [Fix] Drop-down cells in the tables no longer change their value when you scroll the table with the mouse
       wheel. Previously, scrolling the table up or down would silently rewrite the Type, QoS, Payload and
