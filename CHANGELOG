@@ -1,3 +1,9 @@
+# Version 2.1.9
+[Feature] Each table's button bar has a narrow box, to the left of the buttons, for jumping to a row by
+          its number. Type a row number and press Return: the table scrolls to that row and selects it,
+          and the number stays in the box. An empty box, stray characters or a number past the last row
+          are silently ignored and the box is cleared. Hover it for the "Jump to row number" reminder.
+
 # Version 2.1.8
 [Change] The instructional text that used to sit above each table has moved behind a "?" button, at the
          right-hand end of the button bar under the table. Clicking it opens a pop-up, in the spirit of the

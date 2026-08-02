@@ -80,3 +80,7 @@ msgstr "Remove Message"
 #: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:60
 msgid "Send on Startup — Help"
 msgstr "Send on Startup — Help"
+
+#: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:80
+msgid "Jump to row number"
+msgstr "Jump to row number"

@@ -16,7 +16,7 @@ from PyQt5.QtGui import QColor, QPalette
 from PyQt5.QtWidgets import QWidget, QTableWidget, QAbstractItemView, QPushButton, QVBoxLayout, QHBoxLayout, \
     QHeaderView, QSizePolicy, QTableWidgetItem, QComboBox, QMessageBox, QApplication
 
-from easy_mqtt_handler.qt.TableStyle import add_table_padding, NoScrollComboBox
+from easy_mqtt_handler.qt.TableStyle import add_table_padding, NoScrollComboBox, RowJumpBox
 from easy_mqtt_handler.util.MQTTStartupMessages import MQTTStartupMessages, VALID_QOS_LEVELS, \
     HA_COMMON_COMPONENTS, HA_DEFAULT_COMPONENT
 from easy_mqtt_handler.util.StartupPayload import PAYLOAD_TYPES, DEFAULT_TYPE, TYPE_BUILTIN, \
@@ -77,6 +77,9 @@ class StartupTabWidget(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
 
+        # a narrow box for jumping the selection to a row by its number
+        self.jump_box = RowJumpBox(self.table, _("Jump to row number"))
+
         # create the buttons
         self.save_button = QPushButton(_('Add Message'))
         self.save_button.clicked.connect(self.add_message)
@@ -95,6 +98,7 @@ class StartupTabWidget(QWidget):
         layout.addWidget(self.table)
 
         button_layout = QHBoxLayout()
+        button_layout.addWidget(self.jump_box)
         button_layout.addWidget(self.save_button)
         button_layout.addWidget(self.duplicate_button)
         button_layout.addWidget(self.cancel_button)

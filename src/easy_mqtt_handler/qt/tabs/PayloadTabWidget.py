@@ -15,7 +15,7 @@ from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtWidgets import QWidget, QTableWidget, QAbstractItemView, QPushButton, QVBoxLayout, QHBoxLayout, \
     QHeaderView, QSizePolicy, QTableWidgetItem, QFileDialog, QMessageBox
 
-from easy_mqtt_handler.qt.TableStyle import add_table_padding
+from easy_mqtt_handler.qt.TableStyle import add_table_padding, RowJumpBox
 from easy_mqtt_handler.util.MQTTPayloads import MQTTPayloads
 from easy_mqtt_handler.util.Tools import Utils
 
@@ -53,6 +53,9 @@ class PayloadTabWidget(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
 
+        # a narrow box for jumping the selection to a row by its number
+        self.jump_box = RowJumpBox(self.table, _("Jump to row number"))
+
         # create the buttons
         self.save_button = QPushButton(_('Add Payload'))
         self.save_button.clicked.connect(self.add_payload)
@@ -71,6 +74,7 @@ class PayloadTabWidget(QWidget):
         layout.addWidget(self.table)
 
         button_layout = QHBoxLayout()
+        button_layout.addWidget(self.jump_box)
         button_layout.addWidget(self.save_button)
         button_layout.addWidget(self.duplicate_button)
         button_layout.addWidget(self.cancel_button)

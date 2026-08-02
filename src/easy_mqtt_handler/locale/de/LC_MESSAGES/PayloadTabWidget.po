@@ -44,6 +44,10 @@ msgstr "Payload löschen"
 msgid "Payload Handlers — Help"
 msgstr "Payload-Aktionen — Hilfe"
 
+#: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:56
+msgid "Jump to row number"
+msgstr "Zu Zeilennummer springen"
+
 #: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:98
 msgid "Select an executable file"
 msgstr "Wählen Sie eine ausführbare Datei"

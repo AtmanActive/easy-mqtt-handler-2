@@ -82,18 +82,86 @@ def test_the_help_button_is_a_question_mark_at_the_far_right(tab):
     # the button is a bare "?"
     assert tab.help_button.text() == "?"
 
-    # it is the last widget in the button bar, after Add, Duplicate and Remove
+    # it is the last widget in the button bar, after the jump box and the buttons
     outer = tab.layout()
     button_bar = outer.itemAt(outer.count() - 1).layout()
     widgets = [button_bar.itemAt(i).widget() for i in range(button_bar.count())]
     buttons = [w for w in widgets if w is not None]
-    assert buttons == [tab.save_button, tab.duplicate_button, tab.cancel_button, tab.help_button]
+    assert buttons == [tab.jump_box, tab.save_button, tab.duplicate_button,
+                       tab.cancel_button, tab.help_button]
 
 
 def test_the_explanation_text_is_held_for_the_help_pop_up(tab):
     # the instructional text moved off the tab and behind the help button
     assert "remove_ha_entity" in tab.help_text
     assert not hasattr(tab, "hint")
+
+
+# --- jump to row ------------------------------------------------------------
+
+def _selected_rows(tab):
+    return [index.row() for index in tab.table.selectionModel().selectedRows()]
+
+
+def test_the_jump_box_starts_empty_and_narrow_with_a_tooltip(tab):
+    assert tab.jump_box.text() == ""
+    assert tab.jump_box.toolTip() == "Jump to row number"
+    # three digits, and the leftmost widget in the button bar
+    assert tab.jump_box.maxLength() == 3
+    outer = tab.layout()
+    button_bar = outer.itemAt(outer.count() - 1).layout()
+    assert button_bar.itemAt(0).widget() is tab.jump_box
+
+
+def test_jumping_to_a_valid_row_selects_it_and_keeps_the_number(tab):
+    for i in range(3):
+        tab.add_data(f"t{i}", "", 0, False, payload_type="literal")
+
+    tab.jump_box.setText("2")
+    tab.jump_box.jump_to_row()
+
+    # row 2 (counting from 1) is the row at index 1
+    assert _selected_rows(tab) == [1]
+    # a successful jump leaves the number in place
+    assert tab.jump_box.text() == "2"
+
+
+def test_jumping_past_the_last_row_is_ignored_and_clears_the_box(tab):
+    tab.add_data("t0", "", 0, False, payload_type="literal")
+
+    tab.jump_box.setText("9")
+    tab.jump_box.jump_to_row()
+
+    assert _selected_rows(tab) == []
+    assert tab.jump_box.text() == ""
+
+
+def test_jumping_to_row_zero_is_ignored(tab):
+    tab.add_data("t0", "", 0, False, payload_type="literal")
+
+    tab.jump_box.setText("0")
+    tab.jump_box.jump_to_row()
+
+    assert _selected_rows(tab) == []
+    assert tab.jump_box.text() == ""
+
+
+def test_stray_characters_are_ignored_and_clear_the_box(tab):
+    tab.add_data("t0", "", 0, False, payload_type="literal")
+
+    tab.jump_box.setText("ab")
+    tab.jump_box.jump_to_row()
+
+    assert tab.jump_box.text() == ""
+
+
+def test_an_empty_box_does_nothing_on_return(tab):
+    tab.add_data("t0", "", 0, False, payload_type="literal")
+
+    tab.jump_box.setText("")
+    tab.jump_box.jump_to_row()
+
+    assert tab.jump_box.text() == ""
 
 
 # --- the remove_ha_entity row type ------------------------------------------
