@@ -841,9 +841,11 @@ def task_release_notes(_args):
     if body == "":
         fail(f"The \"{heading}\" section of the CHANGELOG is empty.")
 
-    # printed rather than written to a file, so the caller decides where it goes
-    print(body)
-    print(RELEASE_NOTES_FOOTER)
+    # printed rather than written to a file, so the caller decides where it goes.
+    # written as UTF-8 bytes straight to the buffer, because the notes can hold
+    # characters (e.g. the ▲▼ reorder glyphs) that a Windows console's default
+    # codepage cannot encode, which would otherwise crash the print.
+    sys.stdout.buffer.write((body + "\n" + RELEASE_NOTES_FOOTER + "\n").encode("utf-8"))
 
 
 def task_build_all_linux(_args):

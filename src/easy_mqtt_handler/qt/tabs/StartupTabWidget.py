@@ -16,6 +16,7 @@ from PyQt5.QtGui import QColor, QPalette
 from PyQt5.QtWidgets import QWidget, QTableWidget, QAbstractItemView, QPushButton, QVBoxLayout, QHBoxLayout, \
     QHeaderView, QSizePolicy, QTableWidgetItem, QComboBox, QMessageBox, QApplication
 
+from easy_mqtt_handler.qt.RowReorder import RowReorderMixin
 from easy_mqtt_handler.qt.TableStyle import add_table_padding, NoScrollComboBox, RowJumpBox
 from easy_mqtt_handler.util.MQTTStartupMessages import MQTTStartupMessages, VALID_QOS_LEVELS, \
     HA_COMMON_COMPONENTS, HA_DEFAULT_COMPONENT
@@ -44,7 +45,7 @@ COLUMN_HA_NAME = 7
 REMOVAL_TEXT_COLOR = QColor(255, 120, 120)
 
 
-class StartupTabWidget(QWidget):
+class StartupTabWidget(RowReorderMixin, QWidget):
 
     settings_changed = pyqtSignal(bool)
 
@@ -80,13 +81,24 @@ class StartupTabWidget(QWidget):
         # a narrow box for jumping the selection to a row by its number
         self.jump_box = RowJumpBox(self.table, _("Jump to row number"))
 
-        # create the buttons
-        self.save_button = QPushButton(_('Add Message'))
+        # create the buttons: a short action word on the face, the fuller
+        # description in the tool tip
+        self.save_button = QPushButton(_('Add'))
+        self.save_button.setToolTip(_('Add Message row'))
         self.save_button.clicked.connect(self.add_message)
-        self.duplicate_button = QPushButton(_('Duplicate Message'))
+        self.duplicate_button = QPushButton(_('Duplicate'))
+        self.duplicate_button.setToolTip(_('Duplicate Message row'))
         self.duplicate_button.clicked.connect(self.duplicate_message)
-        self.cancel_button = QPushButton(_('Remove Message'))
+        self.cancel_button = QPushButton(_('Remove'))
+        self.cancel_button.setToolTip(_('Remove Message row'))
         self.cancel_button.clicked.connect(self.remove_message)
+        # the move-the-selected-row buttons and the "move to position" box
+        reorder_controls = self.build_reorder_controls(
+            _("Move the selected row up"),
+            _("Move the selected row down"),
+            _("Move the selected row to the top"),
+            _("Move the selected row to the bottom"),
+            _("Move the selected row to position number"))
         # a compact "?" at the far right, opening the explanation that used to
         # sit above the table
         self.help_button = QPushButton("?")
@@ -102,6 +114,8 @@ class StartupTabWidget(QWidget):
         button_layout.addWidget(self.save_button)
         button_layout.addWidget(self.duplicate_button)
         button_layout.addWidget(self.cancel_button)
+        for control in reorder_controls:
+            button_layout.addWidget(control)
         button_layout.addStretch()
         button_layout.addWidget(self.help_button)
         layout.addLayout(button_layout)
@@ -305,6 +319,20 @@ class StartupTabWidget(QWidget):
 
         self.reload_from_settings()
         self.table.selectRow(selected_row + 1)
+        self.setting_changed_event()
+
+    # --- hooks for RowReorderMixin ------------------------------------------
+
+    def _capture_rows(self):
+        self.set_new_startup_data()
+
+    def _get_rows(self):
+        return list(MQTTStartupMessages.get_instance().startup_data)
+
+    def _set_rows(self, rows):
+        MQTTStartupMessages.get_instance().startup_data = rows
+
+    def _changed(self):
         self.setting_changed_event()
 
     def set_new_startup_data(self):

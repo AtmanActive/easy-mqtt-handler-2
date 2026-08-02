@@ -1,3 +1,16 @@
+# Version 2.2.1
+[Change] The Add, Duplicate and Remove buttons on both tables now show just the action word, with the
+         fuller description moved to a mouse-over tool tip (e.g. "Add" with the tip "Add Payload row").
+         This narrows the buttons and lines them up neatly with the compact reorder controls beside them.
+
+# Version 2.2.0
+[Feature] Rows can be reordered. Each table's button bar gains four buttons — ▲, ▼, ╤, ╧ — that move the
+          selected row up one, down one, to the top and to the bottom, plus a narrow box for moving the
+          selected row to a position by its number. Type a position and press Return; the rows below it
+          shift down by one to make room. A move that cannot be satisfied — nothing selected, an empty or
+          non-numeric box, a position past the last row — is silently ignored and the box is cleared;
+          a successful move leaves the number in the box. Hover any control for a reminder of what it does.
+
 # Version 2.1.9
 [Feature] Each table's button bar has a narrow box, to the left of the buttons, for jumping to a row by
           its number. Type a row number and press Return: the table scrolls to that row and selects it,

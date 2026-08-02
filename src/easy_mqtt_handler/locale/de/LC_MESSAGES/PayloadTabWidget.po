@@ -29,16 +29,28 @@ msgid "Command to Run"
 msgstr "Auszuführender Befehl"
 
 #: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:46
-msgid "Add Payload"
-msgstr "Payload hinzufügen"
+msgid "Add"
+msgstr "Hinzufügen"
 
 #: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:47
-msgid "Duplicate Payload"
-msgstr "Payload duplizieren"
+msgid "Add Payload row"
+msgstr "Payload-Zeile hinzufügen"
 
-#: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:48
-msgid "Remove Payload"
-msgstr "Payload löschen"
+#: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:49
+msgid "Duplicate"
+msgstr "Duplizieren"
+
+#: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:50
+msgid "Duplicate Payload row"
+msgstr "Payload-Zeile duplizieren"
+
+#: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:52
+msgid "Remove"
+msgstr "Entfernen"
+
+#: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:53
+msgid "Remove Payload row"
+msgstr "Payload-Zeile entfernen"
 
 #: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:51
 msgid "Payload Handlers — Help"
@@ -47,6 +59,26 @@ msgstr "Payload-Aktionen — Hilfe"
 #: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:56
 msgid "Jump to row number"
 msgstr "Zu Zeilennummer springen"
+
+#: ./src/easy_mqtt_handler/qt/RowReorder.py:39
+msgid "Move the selected row up"
+msgstr "Ausgewählte Zeile nach oben verschieben"
+
+#: ./src/easy_mqtt_handler/qt/RowReorder.py:40
+msgid "Move the selected row down"
+msgstr "Ausgewählte Zeile nach unten verschieben"
+
+#: ./src/easy_mqtt_handler/qt/RowReorder.py:41
+msgid "Move the selected row to the top"
+msgstr "Ausgewählte Zeile ganz nach oben verschieben"
+
+#: ./src/easy_mqtt_handler/qt/RowReorder.py:42
+msgid "Move the selected row to the bottom"
+msgstr "Ausgewählte Zeile ganz nach unten verschieben"
+
+#: ./src/easy_mqtt_handler/qt/RowReorder.py:45
+msgid "Move the selected row to position number"
+msgstr "Ausgewählte Zeile an Positionsnummer verschieben"
 
 #: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:98
 msgid "Select an executable file"

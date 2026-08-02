@@ -131,3 +131,65 @@ def test_payload_new_row_is_selected(payload_tab):
     payload_tab.duplicate_payload()
 
     assert payload_tab.table.currentRow() == 2
+
+
+# --- reorder rows on the Payload Handlers table -----------------------------
+
+def _payload_commands(tab):
+    return [tab.table.item(row, 0).text() for row in range(tab.table.rowCount())]
+
+
+def _three_payloads(tab):
+    for i in range(3):
+        tab.add_data(f"c{i}", "", "/run", "")
+
+
+def test_payload_moving_a_row_down(payload_tab):
+    _three_payloads(payload_tab)
+    payload_tab.table.selectRow(0)
+
+    payload_tab.move_row_down()
+
+    assert _payload_commands(payload_tab) == ["c1", "c0", "c2"]
+    assert payload_tab.table.currentRow() == 1
+
+
+def test_payload_moving_a_row_to_the_bottom(payload_tab):
+    _three_payloads(payload_tab)
+    payload_tab.table.selectRow(0)
+
+    payload_tab.move_row_to_bottom()
+
+    assert _payload_commands(payload_tab) == ["c1", "c2", "c0"]
+
+
+def test_payload_moving_to_a_position_shifts_rows_below_down(payload_tab):
+    _three_payloads(payload_tab)
+    payload_tab.table.selectRow(0)
+
+    payload_tab.position_box.setText("3")
+    payload_tab.position_box.returnPressed.emit()
+
+    assert _payload_commands(payload_tab) == ["c1", "c2", "c0"]
+    assert payload_tab.position_box.text() == "3"
+
+
+def test_payload_moving_to_a_bad_position_clears_the_box(payload_tab):
+    _three_payloads(payload_tab)
+    payload_tab.table.selectRow(0)
+
+    payload_tab.position_box.setText("9")
+    payload_tab.position_box.returnPressed.emit()
+
+    assert _payload_commands(payload_tab) == ["c0", "c1", "c2"]
+    assert payload_tab.position_box.text() == ""
+
+
+def test_payload_moving_with_nothing_selected_does_nothing(payload_tab):
+    _three_payloads(payload_tab)
+    payload_tab.table.clearSelection()
+    payload_tab.table.setCurrentCell(-1, -1)
+
+    payload_tab.move_row_to_top()
+
+    assert _payload_commands(payload_tab) == ["c0", "c1", "c2"]

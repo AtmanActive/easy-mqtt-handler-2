@@ -29,16 +29,28 @@ msgid "Command to Run"
 msgstr "Command to Run"
 
 #: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:46
-msgid "Add Payload"
-msgstr "Add Payload"
+msgid "Add"
+msgstr "Add"
 
 #: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:47
-msgid "Duplicate Payload"
-msgstr "Duplicate Payload"
+msgid "Add Payload row"
+msgstr "Add Payload row"
 
-#: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:48
-msgid "Remove Payload"
-msgstr "Remove Payload"
+#: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:49
+msgid "Duplicate"
+msgstr "Duplicate"
+
+#: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:50
+msgid "Duplicate Payload row"
+msgstr "Duplicate Payload row"
+
+#: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:52
+msgid "Remove"
+msgstr "Remove"
+
+#: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:53
+msgid "Remove Payload row"
+msgstr "Remove Payload row"
 
 #: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:51
 msgid "Payload Handlers — Help"
@@ -47,6 +59,26 @@ msgstr "Payload Handlers — Help"
 #: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:56
 msgid "Jump to row number"
 msgstr "Jump to row number"
+
+#: ./src/easy_mqtt_handler/qt/RowReorder.py:39
+msgid "Move the selected row up"
+msgstr "Move the selected row up"
+
+#: ./src/easy_mqtt_handler/qt/RowReorder.py:40
+msgid "Move the selected row down"
+msgstr "Move the selected row down"
+
+#: ./src/easy_mqtt_handler/qt/RowReorder.py:41
+msgid "Move the selected row to the top"
+msgstr "Move the selected row to the top"
+
+#: ./src/easy_mqtt_handler/qt/RowReorder.py:42
+msgid "Move the selected row to the bottom"
+msgstr "Move the selected row to the bottom"
+
+#: ./src/easy_mqtt_handler/qt/RowReorder.py:45
+msgid "Move the selected row to position number"
+msgstr "Move the selected row to position number"
 
 #: ./src/easy_mqtt_handler/qt/tabs/PayloadTabWidget.py:98
 msgid "Select an executable file"

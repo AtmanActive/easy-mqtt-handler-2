@@ -66,16 +66,28 @@ msgid "Retain"
 msgstr "Retain"
 
 #: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:55
-msgid "Add Message"
-msgstr "Add Message"
+msgid "Add"
+msgstr "Add"
 
 #: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:56
-msgid "Duplicate Message"
-msgstr "Duplicate Message"
+msgid "Add Message row"
+msgstr "Add Message row"
 
-#: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:57
-msgid "Remove Message"
-msgstr "Remove Message"
+#: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:58
+msgid "Duplicate"
+msgstr "Duplicate"
+
+#: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:59
+msgid "Duplicate Message row"
+msgstr "Duplicate Message row"
+
+#: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:61
+msgid "Remove"
+msgstr "Remove"
+
+#: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:62
+msgid "Remove Message row"
+msgstr "Remove Message row"
 
 #: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:60
 msgid "Send on Startup — Help"
@@ -84,3 +96,23 @@ msgstr "Send on Startup — Help"
 #: ./src/easy_mqtt_handler/qt/tabs/StartupTabWidget.py:80
 msgid "Jump to row number"
 msgstr "Jump to row number"
+
+#: ./src/easy_mqtt_handler/qt/RowReorder.py:39
+msgid "Move the selected row up"
+msgstr "Move the selected row up"
+
+#: ./src/easy_mqtt_handler/qt/RowReorder.py:40
+msgid "Move the selected row down"
+msgstr "Move the selected row down"
+
+#: ./src/easy_mqtt_handler/qt/RowReorder.py:41
+msgid "Move the selected row to the top"
+msgstr "Move the selected row to the top"
+
+#: ./src/easy_mqtt_handler/qt/RowReorder.py:42
+msgid "Move the selected row to the bottom"
+msgstr "Move the selected row to the bottom"
+
+#: ./src/easy_mqtt_handler/qt/RowReorder.py:45
+msgid "Move the selected row to position number"
+msgstr "Move the selected row to position number"

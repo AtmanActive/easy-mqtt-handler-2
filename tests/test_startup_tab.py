@@ -82,19 +82,31 @@ def test_the_help_button_is_a_question_mark_at_the_far_right(tab):
     # the button is a bare "?"
     assert tab.help_button.text() == "?"
 
-    # it is the last widget in the button bar, after the jump box and the buttons
+    # it is the last widget in the button bar, after the jump box, the buttons
+    # and the reorder controls
     outer = tab.layout()
     button_bar = outer.itemAt(outer.count() - 1).layout()
     widgets = [button_bar.itemAt(i).widget() for i in range(button_bar.count())]
     buttons = [w for w in widgets if w is not None]
     assert buttons == [tab.jump_box, tab.save_button, tab.duplicate_button,
-                       tab.cancel_button, tab.help_button]
+                       tab.cancel_button, tab.move_up_button, tab.move_down_button,
+                       tab.move_top_button, tab.move_bottom_button, tab.position_box,
+                       tab.help_button]
 
 
 def test_the_explanation_text_is_held_for_the_help_pop_up(tab):
     # the instructional text moved off the tab and behind the help button
     assert "remove_ha_entity" in tab.help_text
     assert not hasattr(tab, "hint")
+
+
+def test_the_action_buttons_show_the_verb_and_explain_in_the_tooltip(tab):
+    assert tab.save_button.text() == "Add"
+    assert tab.save_button.toolTip() == "Add Message row"
+    assert tab.duplicate_button.text() == "Duplicate"
+    assert tab.duplicate_button.toolTip() == "Duplicate Message row"
+    assert tab.cancel_button.text() == "Remove"
+    assert tab.cancel_button.toolTip() == "Remove Message row"
 
 
 # --- jump to row ------------------------------------------------------------
@@ -162,6 +174,132 @@ def test_an_empty_box_does_nothing_on_return(tab):
     tab.jump_box.jump_to_row()
 
     assert tab.jump_box.text() == ""
+
+
+# --- reorder rows -----------------------------------------------------------
+
+def _topics(tab):
+    return [tab.table.item(row, COLUMN_TOPIC).text() for row in range(tab.table.rowCount())]
+
+
+def _three_rows(tab):
+    for i in range(3):
+        tab.add_data(f"t{i}", "", 0, False, payload_type="literal")
+
+
+def test_the_reorder_controls_carry_the_right_glyphs_and_tooltips(tab):
+    assert tab.move_up_button.text() == "▲"
+    assert tab.move_down_button.text() == "▼"
+    assert tab.move_top_button.text() == "╤"
+    assert tab.move_bottom_button.text() == "╧"
+    assert tab.move_up_button.toolTip() == "Move the selected row up"
+    assert tab.move_bottom_button.toolTip() == "Move the selected row to the bottom"
+    assert tab.position_box.toolTip() == "Move the selected row to position number"
+    assert tab.position_box.text() == "" and tab.position_box.maxLength() == 3
+
+
+def test_moving_a_row_up_swaps_it_with_the_one_above(tab):
+    _three_rows(tab)
+    tab.table.selectRow(2)
+
+    tab.move_row_up()
+
+    assert _topics(tab) == ["t0", "t2", "t1"]
+    assert _selected_rows(tab) == [1]
+
+
+def test_moving_a_row_down_swaps_it_with_the_one_below(tab):
+    _three_rows(tab)
+    tab.table.selectRow(0)
+
+    tab.move_row_down()
+
+    assert _topics(tab) == ["t1", "t0", "t2"]
+    assert _selected_rows(tab) == [1]
+
+
+def test_moving_a_row_to_the_top(tab):
+    _three_rows(tab)
+    tab.table.selectRow(2)
+
+    tab.move_row_to_top()
+
+    assert _topics(tab) == ["t2", "t0", "t1"]
+    assert _selected_rows(tab) == [0]
+
+
+def test_moving_a_row_to_the_bottom(tab):
+    _three_rows(tab)
+    tab.table.selectRow(0)
+
+    tab.move_row_to_bottom()
+
+    assert _topics(tab) == ["t1", "t2", "t0"]
+    assert _selected_rows(tab) == [2]
+
+
+def test_moving_up_from_the_top_does_nothing(tab):
+    _three_rows(tab)
+    tab.table.selectRow(0)
+
+    tab.move_row_up()
+
+    assert _topics(tab) == ["t0", "t1", "t2"]
+    assert _selected_rows(tab) == [0]
+
+
+def test_moving_with_nothing_selected_does_nothing(tab):
+    _three_rows(tab)  # add_data leaves no row selected
+
+    tab.move_row_to_bottom()
+
+    assert _topics(tab) == ["t0", "t1", "t2"]
+
+
+def test_moving_a_row_to_a_position_shifts_the_rows_below_down(tab):
+    _three_rows(tab)
+    tab.table.selectRow(0)
+
+    tab.position_box.setText("3")
+    tab.position_box.returnPressed.emit()
+
+    # t0 lands at position 3; t1 and t2 shift up to fill the gap
+    assert _topics(tab) == ["t1", "t2", "t0"]
+    assert _selected_rows(tab) == [2]
+    # a satisfiable move keeps the number in the box
+    assert tab.position_box.text() == "3"
+
+
+def test_moving_a_row_to_its_own_position_keeps_the_number_and_does_nothing(tab):
+    _three_rows(tab)
+    tab.table.selectRow(1)
+
+    tab.position_box.setText("2")
+    tab.position_box.returnPressed.emit()
+
+    assert _topics(tab) == ["t0", "t1", "t2"]
+    assert tab.position_box.text() == "2"
+
+
+def test_moving_to_a_position_past_the_last_row_clears_the_box(tab):
+    _three_rows(tab)
+    tab.table.selectRow(0)
+
+    tab.position_box.setText("9")
+    tab.position_box.returnPressed.emit()
+
+    assert _topics(tab) == ["t0", "t1", "t2"]
+    assert tab.position_box.text() == ""
+
+
+def test_moving_to_a_position_with_nothing_selected_clears_the_box(tab):
+    _three_rows(tab)  # nothing selected
+
+    tab.position_box.setText("2")
+    tab.position_box.returnPressed.emit()
+
+    assert _topics(tab) == ["t0", "t1", "t2"]
+    assert tab.position_box.text() == ""
 
 
 # --- the remove_ha_entity row type ------------------------------------------
